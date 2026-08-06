@@ -74,6 +74,9 @@ namespace baba
         private float _elapsed;
         private float _groupDistance = 500f;
         private float _bobScale = 1f;
+        private float _sizeScale = 1f;
+        private bool _groupingEnabled = true;
+        private bool _obstaclesEnabled = true;
         private bool _soundEnabled = true;
         private bool _showHint = true;
         private bool _missingImages;
@@ -211,6 +214,9 @@ namespace baba
             TopMost = _settings.TopMost;
             _groupDistance = Math.Max(50f, _settings.GroupDistance);
             _bobScale = Math.Clamp(_settings.BobAmount, 0, 300) / 100f;
+            _sizeScale = Math.Clamp(_settings.SizePercent, 20, 300) / 100f;
+            _groupingEnabled = _settings.GroupingEnabled;
+            _obstaclesEnabled = _settings.ObstaclesEnabled;
             _soundEnabled = _settings.SoundEnabled;
             _showHint = _settings.ShowHint;
 
@@ -326,8 +332,9 @@ namespace baba
                 // 群聚逻辑
                 ApplyGrouping(m);
 
-                // 偶尔“打滚玩耍”（约每 7 秒一次）
-                if (_rng.NextDouble() < 0.0025)
+                // 打滚频率由设置控制（0 = 不打滚，100 ≈ 每 7 秒一次）
+                float tumbleProb = 0.0025f * Math.Clamp(_settings.TumbleRate, 0, 200) / 100f;
+                if (_rng.NextDouble() < tumbleProb)
                     m.TryStartTumble();
 
                 // 水平方向独立试探：撞上就沿法线反弹，并加一点随机扰动
@@ -350,6 +357,8 @@ namespace baba
         /// <summary>落单（最近同伴超过群聚距离）时有 20% 概率向群体中心靠拢。</summary>
         private void ApplyGrouping(MonkeyEntity m)
         {
+            if (!_groupingEnabled) return;
+
             float nearest = float.MaxValue;
             float cx = 0f, cy = 0f, count = 0f;
             foreach (var o in _monkeys)
@@ -382,10 +391,13 @@ namespace baba
 
         private bool IntersectsObstacle(Rectangle box)
         {
-            // 屏幕四边 = 禁区
+            // 屏幕四边 = 禁区（永远生效，防止跑丢）
             if (box.Left < _screenBounds.Left || box.Top < _screenBounds.Top ||
                 box.Right > _screenBounds.Right || box.Bottom > _screenBounds.Bottom)
                 return true;
+
+            // 关掉“窗口障碍”后就不躲窗口了
+            if (!_obstaclesEnabled) return false;
 
             foreach (var r in _obstacles)
             {
@@ -424,10 +436,10 @@ namespace baba
             float drawX = m.X + bobX;
             float drawY = m.Y + bobY;
 
-            // 挤压拉伸：爬行时身体一鼓一鼓，像猴子用四肢爬
+            // 挤压拉伸：爬行时身体一鼓一鼓，像猴子用四肢爬；再叠加上“猴子大小”缩放
             float squash = (float)Math.Sin(_elapsed * 8.0 + m.Phase) * 0.07f;
-            float scaleX = m.Scale * (1f + squash);
-            float scaleY = m.Scale * (1f - squash);
+            float scaleX = m.Scale * _sizeScale * (1f + squash);
+            float scaleY = m.Scale * _sizeScale * (1f - squash);
 
             int w = (int)(m.Width * scaleX);
             int h = (int)(m.Height * scaleY);
@@ -537,11 +549,20 @@ namespace baba
             }
         }
 
+        private bool _allowExit;
+
+        /// <summary>设置窗口的“退出程序”按钮调用：放行后退出整个程序。</summary>
+        public void RequestExit()
+        {
+            _allowExit = true;
+            Application.Exit();
+        }
+
         protected override void OnKeyDown(KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Escape)
             {
-                Application.Exit();
+                RequestExit();
                 return;
             }
             if (e.KeyCode == Keys.F1)
@@ -549,7 +570,36 @@ namespace baba
                 OpenSettings();
                 return;
             }
+            if (e.KeyCode == Keys.F2)
+            {
+                OpenHelp();
+                return;
+            }
             base.OnKeyDown(e);
+        }
+
+        /// <summary>
+        /// 防误关：本程序是无边框全屏宠物，正常只能按 ESC 或设置里的“退出”关闭。
+        /// 如果收到外部程序误发的 WM_CLOSE（CloseReason.UserClosing 且未放行），直接拦下，
+        /// 保证宠物不会莫名其妙自己关掉。
+        /// </summary>
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (e.CloseReason == CloseReason.UserClosing && !_allowExit)
+            {
+                e.Cancel = true;
+                return;
+            }
+            base.OnFormClosing(e);
+        }
+
+        /// <summary>打开新手教程。</summary>
+        private void OpenHelp()
+        {
+            using (var form = new HelpForm())
+            {
+                form.ShowDialog(this);
+            }
         }
 
         /// <summary>播放叫声（设置里关掉声音就不播）。</summary>
@@ -600,6 +650,14 @@ namespace baba
                 messages.Add("没找到 assets 里的 dad.wav，右键时用系统提示音代替。\n把 WAV 音频改名后放进 assets 文件夹，重新 F5 即可。");
             if (messages.Count > 0)
                 MessageBox.Show(string.Join("\n\n", messages), "猴群宠物", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            // 第一次运行：弹出新手教程（之后按 F2 或设置里的按钮可再看）
+            if (!_settings.HasSeenTutorial)
+            {
+                _settings.HasSeenTutorial = true;
+                SettingsStore.Save(_settings);
+                OpenHelp();
+            }
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)

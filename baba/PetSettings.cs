@@ -11,10 +11,15 @@ namespace baba
         public int MonkeyCount { get; set; } = 4;
         public int SpeedPercent { get; set; } = 100;      // 移动速度 %
         public int BobAmount { get; set; } = 100;         // 爬行颠簸幅度 %
+        public int SizePercent { get; set; } = 100;       // 猴子大小 %
+        public int TumbleRate { get; set; } = 100;        // 打滚频率 %（0 = 不打滚）
         public int GroupDistance { get; set; } = 500;     // 群聚距离（像素）
         public bool TopMost { get; set; } = true;         // 始终置顶
         public bool SoundEnabled { get; set; } = true;    // 启用叫声
         public bool ShowHint { get; set; } = true;        // 显示操作提示
+        public bool GroupingEnabled { get; set; } = true; // 群聚行为
+        public bool ObstaclesEnabled { get; set; } = true;// 窗口障碍
+        public bool HasSeenTutorial { get; set; }         // 是否看过新手教程
         public List<string?> ImagePaths { get; set; } = new List<string?>(); // 每只猴子的自选图片（跟着数量走）
 
         public string? GetImagePath(int index) =>
@@ -31,10 +36,14 @@ namespace baba
             MonkeyCount = 4;
             SpeedPercent = 100;
             BobAmount = 100;
+            SizePercent = 100;
+            TumbleRate = 100;
             GroupDistance = 500;
             TopMost = true;
             SoundEnabled = true;
             ShowHint = true;
+            GroupingEnabled = true;
+            ObstaclesEnabled = true;
             ImagePaths.Clear();
         }
     }

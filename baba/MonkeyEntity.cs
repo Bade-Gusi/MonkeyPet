@@ -98,7 +98,12 @@ namespace baba
         /// <summary>每帧更新定格/吼叫/翻滚计时状态。</summary>
         public void Tick(float dt)
         {
-            if (_pauseTimer > 0f) _pauseTimer -= dt;
+            if (_pauseTimer > 0f)
+            {
+                _pauseTimer -= dt;
+                if (_pauseTimer <= 0f)
+                    RandomizeDirection(); // 定格结束，立刻重新出发，别傻站着
+            }
             if (_scaleTimer > 0f)
             {
                 _scaleTimer -= dt;

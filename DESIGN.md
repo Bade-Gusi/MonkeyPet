@@ -55,6 +55,9 @@
 - 关于页: 新手教程 / 试听叫声 / 恢复默认 / 退出程序 按钮 + 开源链接
 - 新手教程: 第一次运行自动弹出，F2 随时再看（HelpForm）
 - 防误关: 主窗体 OnFormClosing 拦截外部误发的 UserClosing，仅放行 ESC/退出按钮
+- 控制 API: 内置极简 HTTP 服务（`TcpListener` 只绑 `127.0.0.1`，默认端口 17580），
+  每只猴子按 ID 可控（`/api/monkeys/{id}/roar|move|speed|image`），设置支持局部更新，
+  `/api/exit` 退出；设置「关于」页可开关/看地址
 - 持久化: `%AppData%\MonkeyPet\settings.json`，改动即存，启动时加载
 - 图标语义: 按钮使用 Emoji 图标 + 中文文字（🔊试听 ♻恢复 ✖退出 📖教程 🐵N号）
 - 开源: MIT 协议，设置窗口「关于」页有 GitHub 链接（点击跳转浏览器）

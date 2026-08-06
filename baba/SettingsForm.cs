@@ -59,6 +59,8 @@ namespace baba
 
         // 关于
         private readonly LinkLabel _license = new LinkLabel();
+        private CheckBox _apiCheck = new CheckBox();
+        private LinkLabel _apiLink = new LinkLabel();
 
         public SettingsForm(MainForm pet, PetSettings settings)
         {
@@ -165,6 +167,27 @@ namespace baba
             gAbout.Controls.Add(_license);
 
             _tabAbout.Controls.Add(gAbout);
+
+            // ---- 开发者 API ----
+            var gApi = new GroupBox { Text = "开发者 API（本机控制接口）", Location = new Point(12, 340), Size = new Size(430, 130) };
+            _apiCheck = new CheckBox { Text = "启用 API 控制（只在本机监听）", Location = new Point(20, 26), AutoSize = true };
+            gApi.Controls.Add(_apiCheck);
+
+            gApi.Controls.Add(new Label
+            {
+                Text = "每个猴子都是一个对象，都能用 ID 单独控制：\r\n" +
+                       "GET /api/monkeys  ·  POST /api/monkeys/<id>/roar 等",
+                Location = new Point(20, 54),
+                AutoSize = true,
+                ForeColor = Color.Gray,
+            });
+
+            _apiLink.Text = "API 未启动";
+            _apiLink.Location = new Point(20, 102);
+            _apiLink.AutoSize = true;
+            gApi.Controls.Add(_apiLink);
+
+            _tabAbout.Controls.Add(gApi);
 
             Controls.Add(_tabs);
         }
@@ -273,6 +296,8 @@ namespace baba
             _hintCheck.Checked = _settings.ShowHint;
             _groupCheck.Checked = _settings.GroupingEnabled;
             _obstacleCheck.Checked = _settings.ObstaclesEnabled;
+            _apiCheck.Checked = _settings.ApiEnabled;
+            UpdateApiLabel();
             UpdateValueLabels();
         }
 
@@ -296,6 +321,21 @@ namespace baba
                 {
                     string url = e.Link?.LinkData?.ToString() ?? RepoUrl;
                     Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                }
+                catch { }
+            };
+            _apiCheck.CheckedChanged += (s, e) =>
+            {
+                _pet.SetApiEnabled(_apiCheck.Checked);
+                UpdateApiLabel();
+            };
+            _apiLink.LinkClicked += (s, e) =>
+            {
+                try
+                {
+                    string url = _pet.ApiUrl;
+                    if (!string.IsNullOrEmpty(url))
+                        Process.Start(new ProcessStartInfo(url + "/status") { UseShellExecute = true });
                 }
                 catch { }
             };
@@ -329,6 +369,21 @@ namespace baba
             _sizeValue.Text = _sizeBar.Value + "%";
             _tumbleValue.Text = _tumbleBar.Value <= 0 ? "关" : _tumbleBar.Value + "%";
             _groupValue.Text = _groupBar.Value + " px";
+        }
+
+        private void UpdateApiLabel()
+        {
+            string url = _pet.ApiUrl;
+            _apiLink.Links.Clear();
+            if (string.IsNullOrEmpty(url))
+            {
+                _apiLink.Text = "API 未启动（勾选上面的开关即可）";
+                return;
+            }
+            _apiLink.Text = "在浏览器打开： " + url + "/status";
+            int idx = _apiLink.Text.IndexOf(url, StringComparison.Ordinal);
+            if (idx >= 0)
+                _apiLink.Links.Add(idx, url.Length, url + "/status");
         }
 
         // ==================== 按钮动作 ====================

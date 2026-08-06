@@ -20,6 +20,8 @@ namespace baba
         public bool GroupingEnabled { get; set; } = true; // 群聚行为
         public bool ObstaclesEnabled { get; set; } = true;// 窗口障碍
         public bool HasSeenTutorial { get; set; }         // 是否看过新手教程
+        public bool ApiEnabled { get; set; } = true;      // 启用本机控制 API
+        public int ApiPort { get; set; } = 17580;         // 控制 API 端口
         public List<string?> ImagePaths { get; set; } = new List<string?>(); // 每只猴子的自选图片（跟着数量走）
 
         public string? GetImagePath(int index) =>
@@ -44,6 +46,8 @@ namespace baba
             ShowHint = true;
             GroupingEnabled = true;
             ObstaclesEnabled = true;
+            ApiEnabled = true;
+            ApiPort = 17580;
             ImagePaths.Clear();
         }
     }

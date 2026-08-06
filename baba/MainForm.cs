@@ -8,6 +8,7 @@ using System.IO;
 using System.Media;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Windows.Forms;
 
 namespace baba
@@ -68,6 +69,7 @@ namespace baba
         private BufferedGraphicsContext _graphicsContext = null!;
         private System.Windows.Forms.Timer _timer = null!;
         private SoundPlayer? _soundPlayer;
+        private ControlApiServer? _apiServer;
         private Rectangle _screenBounds;
         private Rectangle _gearRect;
         private float _lastTime;
@@ -602,6 +604,213 @@ namespace baba
             }
         }
 
+        // ==================== 本机控制 API ====================
+
+        /// <summary>当前 API 地址（没启动就是空字符串）。</summary>
+        public string ApiUrl => _apiServer != null ? "http://localhost:" + _apiServer.Port : "";
+
+        /// <summary>启动/停用 API（设置里勾选控制）。</summary>
+        public void SetApiEnabled(bool enabled)
+        {
+            _settings.ApiEnabled = enabled;
+            SettingsStore.Save(_settings);
+            if (enabled) StartControlApi();
+            else StopControlApi();
+        }
+
+        private void StartControlApi()
+        {
+            StopControlApi();
+            if (!_settings.ApiEnabled) return;
+
+            int port = Math.Clamp(_settings.ApiPort, 1024, 65535);
+            for (int attempt = 0; attempt < 5; attempt++)
+            {
+                try
+                {
+                    var server = new ControlApiServer(this, port + attempt);
+                    server.Start();
+                    _apiServer = server;
+                    return;
+                }
+                catch
+                {
+                    _apiServer = null; // 端口被占就试下一个
+                }
+            }
+        }
+
+        private void StopControlApi()
+        {
+            _apiServer?.Dispose();
+            _apiServer = null;
+        }
+
+        public object ApiStatus() => new
+        {
+            app = "MonkeyPet",
+            running = true,
+            monkeyCount = _monkeys.Count,
+            apiUrl = ApiUrl,
+        };
+
+        private MonkeyEntity? GetMonkeyById(int id) =>
+            id >= 1 && id <= _monkeys.Count ? _monkeys[id - 1] : null;
+
+        private static MonkeyInfo ToMonkeyInfo(int id, MonkeyEntity m) => new MonkeyInfo
+        {
+            Id = id,
+            X = m.X,
+            Y = m.Y,
+            Angle = m.Angle,
+            Scale = m.Scale,
+            Width = m.Width,
+            Height = m.Height,
+            Paused = m.IsPaused,
+            SpeedFactor = m.SpeedFactor,
+        };
+
+        // 下面的 Api* 方法会被后台 API 线程调用，统一切回 UI 线程再改状态，避免竞态。
+
+        public MonkeyInfo[] ApiListMonkeys()
+        {
+            if (InvokeRequired)
+                return (MonkeyInfo[])Invoke(new Func<MonkeyInfo[]>(ApiListMonkeys));
+
+            var list = new List<MonkeyInfo>();
+            for (int i = 0; i < _monkeys.Count; i++)
+                list.Add(ToMonkeyInfo(i + 1, _monkeys[i]));
+            return list.ToArray();
+        }
+
+        public MonkeyInfo? ApiGetMonkey(int id)
+        {
+            if (InvokeRequired)
+                return (MonkeyInfo?)Invoke(new Func<MonkeyInfo?>(() => ApiGetMonkey(id)));
+
+            var m = GetMonkeyById(id);
+            return m == null ? null : ToMonkeyInfo(id, m);
+        }
+
+        public bool ApiRoar(int id)
+        {
+            if (InvokeRequired) return (bool)Invoke(new Func<bool>(() => ApiRoar(id)));
+
+            var m = GetMonkeyById(id);
+            if (m == null) return false;
+            m.TriggerRoar(0.3f, 0.5f);
+            PlaySound();
+            return true;
+        }
+
+        public bool ApiMove(int id, float x, float y)
+        {
+            if (InvokeRequired) return (bool)Invoke(new Func<bool>(() => ApiMove(id, x, y)));
+
+            var m = GetMonkeyById(id);
+            if (m == null) return false;
+            m.X = Math.Clamp(x, _screenBounds.Left, _screenBounds.Right);
+            m.Y = Math.Clamp(y, _screenBounds.Top, _screenBounds.Bottom);
+            return true;
+        }
+
+        public bool ApiSetSpeed(int id, float percent)
+        {
+            if (InvokeRequired) return (bool)Invoke(new Func<bool>(() => ApiSetSpeed(id, percent)));
+
+            var m = GetMonkeyById(id);
+            if (m == null) return false;
+            m.SetSpeedFactor(Math.Clamp(percent, 10, 500) / 100f);
+            return true;
+        }
+
+        public bool ApiSetImage(int id, string path)
+        {
+            if (InvokeRequired) return (bool)Invoke(new Func<bool>(() => ApiSetImage(id, path)));
+
+            if (id < 1 || id > _sprites.Count) return false;
+            SetMonkeyImage(id - 1, path);
+            return true;
+        }
+
+        public PetSettings ApiGetSettings() => _settings;
+
+        /// <summary>支持局部更新：POST 里写了哪些字段就改哪些，没写的保持原样。</summary>
+        public bool ApiApplySettings(string jsonBody)
+        {
+            if (InvokeRequired)
+                return (bool)Invoke(new Func<bool>(() => ApiApplySettings(jsonBody)));
+
+            try
+            {
+                using var doc = JsonDocument.Parse(jsonBody);
+                var root = doc.RootElement;
+
+                ApplyInt(root, "MonkeyCount", v => _settings.MonkeyCount = Math.Clamp(v, 1, 6));
+                ApplyInt(root, "SpeedPercent", v => _settings.SpeedPercent = Math.Clamp(v, 20, 300));
+                ApplyInt(root, "BobAmount", v => _settings.BobAmount = Math.Clamp(v, 0, 300));
+                ApplyInt(root, "SizePercent", v => _settings.SizePercent = Math.Clamp(v, 20, 300));
+                ApplyInt(root, "TumbleRate", v => _settings.TumbleRate = Math.Clamp(v, 0, 200));
+                ApplyInt(root, "GroupDistance", v => _settings.GroupDistance = Math.Clamp(v, 50, 2000));
+                ApplyInt(root, "ApiPort", v => _settings.ApiPort = Math.Clamp(v, 1024, 65535));
+                ApplyBool(root, "TopMost", v => _settings.TopMost = v);
+                ApplyBool(root, "SoundEnabled", v => _settings.SoundEnabled = v);
+                ApplyBool(root, "ShowHint", v => _settings.ShowHint = v);
+                ApplyBool(root, "GroupingEnabled", v => _settings.GroupingEnabled = v);
+                ApplyBool(root, "ObstaclesEnabled", v => _settings.ObstaclesEnabled = v);
+                ApplyBool(root, "ApiEnabled", v => _settings.ApiEnabled = v);
+
+                SetMonkeyCount(_settings.MonkeyCount);
+                ApplySettings();
+
+                if (root.TryGetProperty("ImagePaths", out var ip) && ip.ValueKind == JsonValueKind.Array)
+                {
+                    for (int i = 0; i < Math.Min(ip.GetArrayLength(), _sprites.Count); i++)
+                    {
+                        if (ip[i].ValueKind == JsonValueKind.String)
+                            SetMonkeyImage(i, ip[i].GetString());
+                        else if (ip[i].ValueKind == JsonValueKind.Null)
+                            SetMonkeyImage(i, null);
+                    }
+                }
+
+                if (root.TryGetProperty("ApiEnabled", out _))
+                {
+                    if (_settings.ApiEnabled) StartControlApi();
+                    else StopControlApi();
+                }
+
+                SettingsStore.Save(_settings);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static void ApplyInt(JsonElement root, string name, Action<int> set)
+        {
+            if (root.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out int v))
+                set(v);
+        }
+
+        private static void ApplyBool(JsonElement root, string name, Action<bool> set)
+        {
+            if (root.TryGetProperty(name, out var el) && (el.ValueKind == JsonValueKind.True || el.ValueKind == JsonValueKind.False))
+                set(el.GetBoolean());
+        }
+
+        public void ApiExit()
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(ApiExit));
+                return;
+            }
+            RequestExit();
+        }
+
         /// <summary>播放叫声（设置里关掉声音就不播）。</summary>
         internal void PlaySound()
         {
@@ -658,10 +867,14 @@ namespace baba
                 SettingsStore.Save(_settings);
                 OpenHelp();
             }
+
+            // 启动本机控制 API（如果设置里开着）
+            StartControlApi();
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
+            StopControlApi();
             _timer?.Stop();
             _timer?.Dispose();
             _soundPlayer?.Dispose();

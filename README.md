@@ -46,6 +46,39 @@
 不放也可以：程序自动生成彩色卡通脸，音频用系统提示音代替。
 更简单的做法：在设置窗口里用「抠图工具」或「换图」按钮，全程不用手动放文件。
 
+## 🔌 控制 API（每个猴子都是一个对象）
+
+程序内置一个**只在本机监听**的 HTTP 接口（默认 `http://localhost:17580`），
+每一只猴子都能按 ID 单独控制。设置里「关于 → 开发者 API」可开关、可看地址、
+可一键在浏览器打开实时数据。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/status` | 程序状态、猴子数量 |
+| GET | `/api/monkeys` | 所有猴子的实时数据（数组，每个元素是一只猴子对象） |
+| GET | `/api/monkeys/{id}` | 单只猴子的数据（x、y、角度、大小、是否定格等） |
+| POST | `/api/monkeys/{id}/roar` | 让这只猴子喊爸爸 |
+| POST | `/api/monkeys/{id}/move?x=100&y=200` | 把它移动到指定坐标 |
+| POST | `/api/monkeys/{id}/speed?percent=150` | 单独调它的速度 |
+| POST | `/api/monkeys/{id}/image?path=C:\xxx.png` | 单独换它的图片 |
+| GET | `/api/settings` | 读取当前全部设置 |
+| POST | `/api/settings` | 改设置（**支持局部更新**：body 里写了哪个字段就改哪个） |
+| POST | `/api/exit` | 退出程序 |
+
+例：让 3 号猴子喊爸爸
+
+```bash
+curl -X POST "http://localhost:17580/api/monkeys/3/roar"
+```
+
+例：只把速度改成 150%
+
+```bash
+curl -X POST "http://localhost:17580/api/settings" -H "Content-Type: application/json" -d '{"SpeedPercent":150}'
+```
+
+> 该接口只监听 `127.0.0.1`，别的电脑访问不到；不开外挂、不碰游戏进程。
+
 ## 🧑‍💻 技术栈
 
 - C# / Windows Forms（.NET 8）

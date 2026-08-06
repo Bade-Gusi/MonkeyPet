@@ -9,3 +9,9 @@ obj/
 
 # Temp / log
 babapet_log.txt
+
+# IDE auto-generated empty form resource files (code doesn't use them)
+baba/CutoutForm.resx
+baba/HelpForm.resx
+baba/MainForm.resx
+baba/SettingsForm.resx

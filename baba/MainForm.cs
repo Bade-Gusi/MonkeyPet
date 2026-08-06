@@ -854,9 +854,9 @@ namespace baba
             // 一次性中文提示（之后不再打扰）
             var messages = new List<string>();
             if (_missingImages)
-                messages.Add("没找到 assets 里的 p1.png~p4.png，已用默认卡通脸代替。\n把 4 张透明 PNG 改名后放进 assets 文件夹，重新 F5 即可。");
+                messages.Add("没找到猴子的图片，已用默认卡通脸代替。\n点设置窗口『猴子图片』页的【打开素材文件夹】按钮，\n把 p1~p4.png 丢进去，重启程序即可。");
             if (_missingAudio)
-                messages.Add("没找到 assets 里的 dad.wav，右键时用系统提示音代替。\n把 WAV 音频改名后放进 assets 文件夹，重新 F5 即可。");
+                messages.Add("没找到叫声音频，右键时用系统提示音代替。\n点设置窗口『猴子图片』页的【打开素材文件夹】按钮，\n把 dad.wav 丢进去，重启程序即可。");
             if (messages.Count > 0)
                 MessageBox.Show(string.Join("\n\n", messages), "猴群宠物", MessageBoxButtons.OK, MessageBoxIcon.Information);
 

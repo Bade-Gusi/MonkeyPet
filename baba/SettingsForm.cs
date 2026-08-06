@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Windows.Forms;
@@ -55,6 +56,7 @@ namespace baba
         // 猴子图片
         private readonly Label _imgHeader = new Label();
         private readonly Button _cutoutBtn = new Button();
+        private readonly Button _openAssetsBtn = new Button();
         private readonly List<PictureBox> _thumbs = new List<PictureBox>();
 
         // 关于
@@ -131,6 +133,8 @@ namespace baba
             _imgHeader.AutoSize = true;
             _cutoutBtn.Text = "🖼 抠图工具…";
             _cutoutBtn.Size = new Size(124, 32);
+            _openAssetsBtn.Text = "📂 打开素材文件夹（把 p1~p4.png 和 dad.wav 丢进去就行）";
+            _openAssetsBtn.Size = new Size(428, 36);
 
             // ---------- 关于 ----------
             _tabAbout.AutoScroll = true;
@@ -234,6 +238,9 @@ namespace baba
             _cutoutBtn.Location = new Point(320, 12);
             _tabImages.Controls.Add(_cutoutBtn);
 
+            _openAssetsBtn.Location = new Point(16, 50);
+            _tabImages.Controls.Add(_openAssetsBtn);
+
             int count = _countBar.Value;
             var sprites = _pet.Sprites;
             for (int i = 0; i < count; i++)
@@ -241,7 +248,7 @@ namespace baba
                 int col = i % 2;
                 int row = i / 2;
                 int x = 16 + col * 214;
-                int yy = 56 + row * 58;
+                int yy = 96 + row * 58;
 
                 var thumb = new PictureBox
                 {
@@ -315,6 +322,7 @@ namespace baba
             _groupCheck.CheckedChanged += (s, e) => SaveAndApply();
             _obstacleCheck.CheckedChanged += (s, e) => SaveAndApply();
             _cutoutBtn.Click += (s, e) => OpenCutout();
+            _openAssetsBtn.Click += (s, e) => OpenAssetsFolder();
             _license.LinkClicked += (s, e) =>
             {
                 try
@@ -393,6 +401,21 @@ namespace baba
             using (var form = new HelpForm())
             {
                 form.ShowDialog(this);
+            }
+        }
+
+        /// <summary>一键弹出素材文件夹，用户把 p1~p4.png / dad.wav 丢进去就行。</summary>
+        private void OpenAssetsFolder()
+        {
+            try
+            {
+                string dir = Path.Combine(Application.StartupPath, "assets");
+                Directory.CreateDirectory(dir);
+                Process.Start(new ProcessStartInfo { FileName = dir, UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "打不开素材文件夹：\n" + ex.Message, "猴群宠物", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 

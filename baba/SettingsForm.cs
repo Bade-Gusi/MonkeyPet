@@ -138,7 +138,7 @@ namespace baba
 
             // ---------- 关于 ----------
             _tabAbout.AutoScroll = true;
-            var gAbout = new GroupBox { Text = "本程序", Location = new Point(12, 12), Size = new Size(430, 320) };
+            var gAbout = new GroupBox { Text = "本程序", Location = new Point(12, 12), Size = new Size(430, 360) };
             gAbout.Controls.Add(new Label
             {
                 Text = "🐵 猴群宠物 · 开源桌面宠物",
@@ -157,14 +157,16 @@ namespace baba
             helpBtn.Click += (s, e) => OpenHelp();
             var soundBtn = new Button { Text = "🔊 试听叫声", Location = new Point(220, 120), Size = new Size(190, 44) };
             soundBtn.Click += (s, e) => _pet.PlaySound();
-            var resetBtn = new Button { Text = "♻ 恢复默认", Location = new Point(20, 176), Size = new Size(190, 44) };
+            var togetherBtn = new Button { Text = "🗣 一起喊爸爸", Location = new Point(20, 176), Size = new Size(190, 44) };
+            togetherBtn.Click += (s, e) => _pet.RoarAll();
+            var resetBtn = new Button { Text = "♻ 恢复默认", Location = new Point(220, 176), Size = new Size(190, 44) };
             resetBtn.Click += (s, e) => ResetAll();
-            var exitBtn = new Button { Text = "✖ 退出程序", Location = new Point(220, 176), Size = new Size(190, 44) };
+            var exitBtn = new Button { Text = "✖ 退出程序", Location = new Point(20, 232), Size = new Size(390, 40) };
             exitBtn.Click += (s, e) => _pet.RequestExit();
-            gAbout.Controls.AddRange(new Control[] { helpBtn, soundBtn, resetBtn, exitBtn });
+            gAbout.Controls.AddRange(new Control[] { helpBtn, soundBtn, togetherBtn, resetBtn, exitBtn });
 
             _license.Text = "🔓 本程序已在 GitHub 开源（MIT 协议）：\r\n" + RepoUrl + "\r\n可以随便改、随便用、随便发给朋友～";
-            _license.Location = new Point(20, 238);
+            _license.Location = new Point(20, 284);
             _license.Size = new Size(390, 70);
             _license.ForeColor = Color.Gray;
             _license.Links.Add(RepoUrl.IndexOf(RepoUrl, StringComparison.Ordinal), RepoUrl.Length, RepoUrl);
@@ -173,7 +175,7 @@ namespace baba
             _tabAbout.Controls.Add(gAbout);
 
             // ---- 开发者 API ----
-            var gApi = new GroupBox { Text = "开发者 API（本机控制接口）", Location = new Point(12, 340), Size = new Size(430, 130) };
+            var gApi = new GroupBox { Text = "开发者 API（本机控制接口）", Location = new Point(12, 380), Size = new Size(430, 130) };
             _apiCheck = new CheckBox { Text = "启用 API 控制（只在本机监听）", Location = new Point(20, 26), AutoSize = true };
             gApi.Controls.Add(_apiCheck);
 

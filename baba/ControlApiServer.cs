@@ -189,6 +189,8 @@ namespace baba
                     case "monkeys":
                         if (segs.Length == 2 && method == "GET")
                             return (200, Json(_form.ApiListMonkeys()));
+                        if (segs.Length == 3 && segs[2] == "roar-all" && method == "POST")
+                            return (200, Json(new { ok = _form.ApiRoarAll() }));
                         if (segs.Length == 3 && method == "GET")
                             return ApiGetMonkey(segs[2]);
                         if (segs.Length == 4)

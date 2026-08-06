@@ -84,6 +84,10 @@ namespace baba
         private bool _missingImages;
         private bool _missingAudio;
 
+        // 喊“爸爸”时弹出的模拟消息框（说话气泡，非阻塞）
+        private static readonly string[] BubbleTexts = { "爸爸！", "叫爸爸！", "诶，爸爸！", "爸爸爸爸！" };
+        private readonly List<SpeechBubble> _bubbles = new List<SpeechBubble>();
+
         public MainForm(PetSettings settings)
         {
             _settings = settings;
@@ -423,6 +427,7 @@ namespace baba
                 foreach (var m in _monkeys)
                     DrawMonkey(buffer.Graphics, m);
 
+                DrawBubbles(buffer.Graphics);
                 DrawHint(buffer.Graphics);
                 DrawGear(buffer.Graphics);
 
@@ -473,7 +478,7 @@ namespace baba
                 : 255;
             if (alpha <= 0) return;
 
-            string text = "右键点猴子喊爸爸 ｜ 右上角齿轮或 F1 打开设置 ｜ ESC 退出";
+            string text = "右键点猴子喊爸爸 ｜ F3 一起喊 ｜ F1 设置 ｜ ESC 退出";
             using (var font = new Font("Microsoft YaHei UI", 13f, FontStyle.Bold))
             {
                 SizeF sz = g.MeasureString(text, font);
@@ -524,6 +529,73 @@ namespace baba
                 g.FillEllipse(hole, cx - 3.5f, cy - 3.5f, 7f, 7f);
         }
 
+        /// <summary>画所有“爸爸”说话气泡（模拟消息框），到时间自动消失。</summary>
+        private void DrawBubbles(Graphics g)
+        {
+            if (_screenBounds.Width <= 0) return;
+
+            // 清理过期的气泡
+            for (int i = _bubbles.Count - 1; i >= 0; i--)
+            {
+                if (_elapsed - _bubbles[i].StartTime > _bubbles[i].Duration)
+                    _bubbles.RemoveAt(i);
+            }
+
+            foreach (var b in _bubbles)
+            {
+                var m = GetMonkeyById(b.MonkeyId);
+                if (m == null) continue;
+
+                float age = _elapsed - b.StartTime;
+                float alpha = Math.Clamp((b.Duration - age) / 0.35f, 0f, 1f) * 255f;
+                if (alpha <= 0f) continue;
+                int a = (int)alpha;
+
+                using (var font = new Font("Microsoft YaHei UI", 14f, FontStyle.Bold))
+                {
+                    SizeF sz = g.MeasureString(b.Text, font);
+                    float bw = sz.Width + 24f;
+                    float bh = sz.Height + 14f;
+                    float bx = m.X;
+                    float by = m.Y - m.Height * _sizeScale * 0.5f - 46f;
+
+                    var rect = new RectangleF(bx - bw / 2f, by - bh, bw, bh);
+                    rect.X = Math.Clamp(rect.X, 4f, _screenBounds.Right - rect.Width - 4f);
+                    rect.Y = Math.Clamp(rect.Y, 4f, _screenBounds.Bottom - rect.Height - 4f);
+
+                    var tail = new PointF[]
+                    {
+                        new PointF(bx, rect.Bottom),
+                        new PointF(bx - 9f, rect.Bottom + 9f),
+                        new PointF(bx + 9f, rect.Bottom + 9f),
+                    };
+
+                    using (var bg = new SolidBrush(Color.FromArgb(a, 255, 255, 255)))
+                    using (var border = new Pen(Color.FromArgb(a, 60, 60, 60), 2f))
+                    using (var textBrush = new SolidBrush(Color.FromArgb(a, 40, 40, 40)))
+                    using (var path = RoundedRect(rect, 10f))
+                    {
+                        g.FillPath(bg, path);
+                        g.DrawPath(border, path);
+                        g.FillPolygon(bg, tail);
+                        g.DrawString(b.Text, font, textBrush, rect.X + 12f, rect.Y + 6f);
+                    }
+                }
+            }
+        }
+
+        private static GraphicsPath RoundedRect(RectangleF r, float radius)
+        {
+            var path = new GraphicsPath();
+            float d = radius * 2f;
+            path.AddArc(r.X, r.Y, d, d, 180, 90);
+            path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+            path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+            path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
         // ==================== 交互 ====================
 
         protected override void OnMouseClick(MouseEventArgs e)
@@ -538,17 +610,45 @@ namespace baba
             base.OnMouseClick(e);
             if (e.Button != MouseButtons.Right) return;
 
-            foreach (var m in _monkeys)
+            for (int i = 0; i < _monkeys.Count; i++)
             {
+                var m = _monkeys[i];
                 Rectangle hitBox = GetCollisionBox(m, m.X, m.Y);
                 hitBox.Inflate(6, 6); // 放宽点击判定，更容易点中
                 if (hitBox.Contains(e.Location))
                 {
-                    m.TriggerRoar(0.3f, 0.5f); // 定格 0.3 秒，吼叫放大 0.5 秒
-                    PlaySound();
+                    RoarMonkey(i + 1);
                     break;
                 }
             }
+        }
+
+        /// <summary>让某只猴子喊“爸爸”：定格、放大、弹气泡、播声音。UI 线程调用。</summary>
+        private void RoarMonkey(int id)
+        {
+            var m = GetMonkeyById(id);
+            if (m == null) return;
+
+            m.TriggerRoar(0.3f, 0.5f); // 定格 0.3 秒，吼叫放大 0.5 秒
+            _bubbles.Add(new SpeechBubble
+            {
+                MonkeyId = id,
+                StartTime = _elapsed,
+                Text = BubbleTexts[_rng.Next(BubbleTexts.Length)],
+            });
+            PlaySound();
+        }
+
+        /// <summary>让所有猴子一起喊“爸爸”（F3 / 设置按钮 / API 都走这里）。</summary>
+        public void RoarAll()
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(RoarAll));
+                return;
+            }
+            for (int i = 0; i < _monkeys.Count; i++)
+                RoarMonkey(i + 1);
         }
 
         private bool _allowExit;
@@ -575,6 +675,11 @@ namespace baba
             if (e.KeyCode == Keys.F2)
             {
                 OpenHelp();
+                return;
+            }
+            if (e.KeyCode == Keys.F3)
+            {
+                RoarAll(); // 所有猴子一起喊爸爸
                 return;
             }
             base.OnKeyDown(e);
@@ -696,10 +801,16 @@ namespace baba
         {
             if (InvokeRequired) return (bool)Invoke(new Func<bool>(() => ApiRoar(id)));
 
-            var m = GetMonkeyById(id);
-            if (m == null) return false;
-            m.TriggerRoar(0.3f, 0.5f);
-            PlaySound();
+            if (GetMonkeyById(id) == null) return false;
+            RoarMonkey(id);
+            return true;
+        }
+
+        /// <summary>API：所有猴子一起喊“爸爸”。</summary>
+        public bool ApiRoarAll()
+        {
+            if (InvokeRequired) return (bool)Invoke(new Func<bool>(ApiRoarAll));
+            RoarAll();
             return true;
         }
 
@@ -881,6 +992,15 @@ namespace baba
             foreach (var img in _sprites)
                 img?.Dispose();
             base.OnFormClosed(e);
+        }
+
+        /// <summary>喊“爸爸”时的一条说话气泡。</summary>
+        private sealed class SpeechBubble
+        {
+            public int MonkeyId;
+            public float StartTime;
+            public string Text = "爸爸！";
+            public float Duration = 1.6f;
         }
 
         // ==================== 默认图片生成 ====================

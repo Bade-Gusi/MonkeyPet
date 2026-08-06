@@ -63,6 +63,7 @@ namespace baba
         private readonly LinkLabel _license = new LinkLabel();
         private CheckBox _apiCheck = new CheckBox();
         private LinkLabel _apiLink = new LinkLabel();
+        private Button _followBtn = new Button();
 
         public SettingsForm(MainForm pet, PetSettings settings)
         {
@@ -194,6 +195,24 @@ namespace baba
             gApi.Controls.Add(_apiLink);
 
             _tabAbout.Controls.Add(gApi);
+
+            // ---- 玩法 ----
+            var gPlay = new GroupBox { Text = "玩法（也可以按快捷键）", Location = new Point(12, 518), Size = new Size(430, 120) };
+            var danceBtn = new Button { Text = "💃 一起跳舞（F4）", Location = new Point(20, 30), Size = new Size(190, 40) };
+            danceBtn.Click += (s, e) => _pet.ApiDance();
+            var bananaBtn = new Button { Text = "🍌 扔根香蕉（B）", Location = new Point(220, 30), Size = new Size(190, 40) };
+            bananaBtn.Click += (s, e) => _pet.ApiThrowBanana();
+            _followBtn = new Button { Text = "🐒 跟随鼠标（F5）", Location = new Point(20, 76), Size = new Size(190, 40) };
+            _followBtn.Click += (s, e) => UpdateFollowBtn();
+            gPlay.Controls.AddRange(new Control[] { danceBtn, bananaBtn, _followBtn });
+            gPlay.Controls.Add(new Label
+            {
+                Text = "在桌面上：左键戳一下 / 拖起来扔，也很好玩～",
+                Location = new Point(220, 84),
+                AutoSize = true,
+                ForeColor = Color.Gray,
+            });
+            _tabAbout.Controls.Add(gPlay);
 
             Controls.Add(_tabs);
         }
@@ -379,6 +398,12 @@ namespace baba
             _sizeValue.Text = _sizeBar.Value + "%";
             _tumbleValue.Text = _tumbleBar.Value <= 0 ? "关" : _tumbleBar.Value + "%";
             _groupValue.Text = _groupBar.Value + " px";
+        }
+
+        private void UpdateFollowBtn()
+        {
+            bool on = _pet.ApiToggleFollow();
+            _followBtn.Text = on ? "🐒 跟随鼠标：开（再点关）" : "🐒 跟随鼠标（F5）";
         }
 
         private void UpdateApiLabel()

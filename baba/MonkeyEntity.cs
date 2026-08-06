@@ -15,7 +15,13 @@ namespace baba
         public float ExtraAngle;          // 额外旋转角（打滚玩耍用，弧度）
         public readonly float Phase;      // 正弦波随机相位，让每只猴子的颠簸不同步
         public float Scale = 1.0f;        // 绘制缩放（吼叫时临时放大）
+        public float ScaleBoost = 1f;     // 临时变大（吃香蕉等）
         public float SpeedFactor = 1f;    // 速度倍率（设置面板可调）
+        public float ThrowTimer;          // 被扔出去后的滑行计时（>0 时带摩擦）
+        public float AirTime;             // 跳起来滞空时间（戳一下会蹦）
+        public bool IsSleeping;           // 在睡觉
+        public bool IsDancing;            // 在跳舞
+        public bool IsHeld;               // 被鼠标拖着
         public Image Sprite;              // 角色图片（始终非空，缺失时由 MainForm 生成默认脸）
 
         private readonly Random _rng;
@@ -104,6 +110,12 @@ namespace baba
                 if (_pauseTimer <= 0f)
                     RandomizeDirection(); // 定格结束，立刻重新出发，别傻站着
             }
+            if (ScaleBoost > 1f)
+                ScaleBoost = Math.Max(1f, ScaleBoost - dt * 0.8f); // 变大效果慢慢恢复
+            if (ThrowTimer > 0f)
+                ThrowTimer -= dt;
+            if (AirTime > 0f)
+                AirTime -= dt;
             if (_scaleTimer > 0f)
             {
                 _scaleTimer -= dt;

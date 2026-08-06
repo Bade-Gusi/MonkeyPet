@@ -186,6 +186,21 @@ namespace baba
                     case "status":
                         return (200, Json(_form.ApiStatus()));
 
+                    case "dance":
+                        if (method == "POST")
+                            return (200, Json(new { ok = _form.ApiDance() }));
+                        return (400, Json(new { error = "use POST" }));
+
+                    case "banana":
+                        if (method == "POST")
+                            return (200, Json(new { ok = _form.ApiThrowBanana() }));
+                        return (400, Json(new { error = "use POST" }));
+
+                    case "follow":
+                        if (method == "POST")
+                            return (200, Json(new { ok = _form.ApiToggleFollow() }));
+                        return (400, Json(new { error = "use POST" }));
+
                     case "monkeys":
                         if (segs.Length == 2 && method == "GET")
                             return (200, Json(_form.ApiListMonkeys()));
@@ -244,6 +259,12 @@ namespace baba
             {
                 case "roar":
                     return (200, Json(new { ok = _form.ApiRoar(id) }));
+                case "poke":
+                    return (200, Json(new { ok = _form.ApiPoke(id) }));
+                case "toss":
+                    if (!TryGetFloat(q, "vx", out float tvx) || !TryGetFloat(q, "vy", out float tvy))
+                        return (400, Json(new { error = "need ?vx=&vy=" }));
+                    return (200, Json(new { ok = _form.ApiToss(id, tvx, tvy) }));
                 case "move":
                     if (!TryGetFloat(q, "x", out float x) || !TryGetFloat(q, "y", out float y))
                         return (400, Json(new { error = "need ?x=&y=" }));

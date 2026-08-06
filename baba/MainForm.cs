@@ -88,6 +88,18 @@ namespace baba
         private static readonly string[] BubbleTexts = { "爸爸！", "叫爸爸！", "诶，爸爸！", "爸爸爸爸！" };
         private readonly List<SpeechBubble> _bubbles = new List<SpeechBubble>();
 
+        // 趣味玩法状态
+        private readonly List<Banana> _bananas = new List<Banana>();
+        private int _bananaScore;
+        private int _dragId = -1;          // 正在拖的第几只（1 起，-1 = 没拖）
+        private bool _mouseDown;
+        private Point _dragStart;
+        private Point _lastMouse;
+        private bool _suppressNextLeftClick;
+        private bool _followMode;          // F5：猴子跟着鼠标走
+        private float _danceEndTime;       // 跳舞结束时间
+        private float _idleTime;           // 用户多久没操作
+
         public MainForm(PetSettings settings)
         {
             _settings = settings;
@@ -320,6 +332,7 @@ namespace baba
             _lastTime = now;
             _elapsed = now;
 
+            _idleTime += dt; // 用户多久没动鼠标/键盘
             RefreshObstacles();
             UpdateMonkeys(dt);
             Invalidate();
@@ -327,10 +340,51 @@ namespace baba
 
         private void UpdateMonkeys(float dt)
         {
+            // 跳舞计时结束
+            if (_danceEndTime > 0f && _elapsed >= _danceEndTime)
+            {
+                _danceEndTime = 0f;
+                foreach (var m in _monkeys) m.IsDancing = false;
+            }
+
+            // 太久没人碰 → 全体睡觉
+            if (_idleTime > 45f)
+            {
+                foreach (var m in _monkeys)
+                {
+                    if (!m.IsSleeping && !m.IsDancing)
+                    {
+                        m.IsSleeping = true;
+                        AddBubble(GetMonkeyId(m), "💤 困了…");
+                    }
+                }
+            }
+
             foreach (var m in _monkeys)
             {
                 m.Tick(dt);
-                if (m.IsPaused) continue; // 右键定格中，不动
+                if (m.IsPaused) continue;      // 右键定格中，不动
+                if (m.IsHeld) continue;        // 被鼠标拖着，位置鼠标说了算
+                if (m.IsSleeping) continue;    // 睡觉不动
+
+                if (m.IsDancing)
+                {
+                    m.SpeedX = 0f;
+                    m.SpeedY = 0f;
+                    m.UpdateAngle();
+                    continue;                  // 跳舞不走路
+                }
+
+                // 戳一下跳起来的重力
+                if (m.AirTime > 0f)
+                {
+                    m.SpeedY += 1400f * dt;
+                    if (m.AirTime <= 0f)
+                    {
+                        m.AirTime = 0f;
+                        m.SpeedY = 0f; // 落地停住
+                    }
+                }
 
                 // 2~7 秒随机改向
                 m.UpdateDirectionTimer(dt);
@@ -342,6 +396,25 @@ namespace baba
                 float tumbleProb = 0.0025f * Math.Clamp(_settings.TumbleRate, 0, 200) / 100f;
                 if (_rng.NextDouble() < tumbleProb)
                     m.TryStartTumble();
+
+                // 跟随鼠标 / 抢香蕉
+                if (_followMode)
+                {
+                    Point pt = PointToClient(Cursor.Position);
+                    m.SteerToward(pt.X, pt.Y);
+                }
+                else if (_bananas.Count > 0)
+                {
+                    var nb = NearestBanana(m);
+                    if (nb != null) m.SteerToward(nb.X, nb.Y);
+                }
+
+                // 被扔出去后滑行摩擦
+                if (m.ThrowTimer > 0f)
+                {
+                    m.SpeedX *= 0.985f;
+                    m.SpeedY *= 0.985f;
+                }
 
                 // 水平方向独立试探：撞上就沿法线反弹，并加一点随机扰动
                 float nx = m.X + m.SpeedX * dt;
@@ -358,6 +431,8 @@ namespace baba
 
                 m.UpdateAngle();
             }
+
+            UpdateBananas(dt);
         }
 
         /// <summary>落单（最近同伴超过群聚距离）时有 20% 概率向群体中心靠拢。</summary>
@@ -427,6 +502,8 @@ namespace baba
                 foreach (var m in _monkeys)
                     DrawMonkey(buffer.Graphics, m);
 
+                DrawBananas(buffer.Graphics);
+                DrawScore(buffer.Graphics);
                 DrawBubbles(buffer.Graphics);
                 DrawHint(buffer.Graphics);
                 DrawGear(buffer.Graphics);
@@ -445,8 +522,11 @@ namespace baba
 
             // 挤压拉伸：爬行时身体一鼓一鼓，像猴子用四肢爬；再叠加上“猴子大小”缩放
             float squash = (float)Math.Sin(_elapsed * 8.0 + m.Phase) * 0.07f;
-            float scaleX = m.Scale * _sizeScale * (1f + squash);
-            float scaleY = m.Scale * _sizeScale * (1f - squash);
+            float scaleX = m.Scale * _sizeScale * m.ScaleBoost * (1f + squash);
+            float scaleY = m.Scale * _sizeScale * m.ScaleBoost * (1f - squash);
+
+            // 睡觉就趴下一点
+            if (m.IsSleeping) scaleY *= 0.85f;
 
             int w = (int)(m.Width * scaleX);
             int h = (int)(m.Height * scaleY);
@@ -455,6 +535,14 @@ namespace baba
             // 朝向角 + 左右摇晃 + 偶尔打滚（ExtraAngle 转一圈）
             float rock = (float)Math.Sin(_elapsed * 5.0 + m.Phase) * 6f;
             float totalDeg = (m.Angle * 180f / (float)Math.PI) + rock + (m.ExtraAngle * 180f / (float)Math.PI);
+            if (m.IsSleeping) totalDeg = 0f; // 睡觉正面朝上
+
+            // 跳舞：原地蹦 + 左右扭
+            if (m.IsDancing)
+            {
+                drawY -= (float)Math.Abs(Math.Sin(_elapsed * 10.0 + m.Phase)) * 16f;
+                totalDeg += (float)Math.Sin(_elapsed * 12.0 + m.Phase) * 10f;
+            }
 
             GraphicsState state = g.Save();
             g.TranslateTransform(drawX, drawY);
@@ -478,15 +566,22 @@ namespace baba
                 : 255;
             if (alpha <= 0) return;
 
-            string text = "右键点猴子喊爸爸 ｜ F3 一起喊 ｜ F1 设置 ｜ ESC 退出";
-            using (var font = new Font("Microsoft YaHei UI", 13f, FontStyle.Bold))
+            string[] lines =
             {
-                SizeF sz = g.MeasureString(text, font);
+                "右键喊爸爸 ｜ F3 一起喊 ｜ 左键戳一下 / 拖起来扔",
+                "F4 跳舞 ｜ F5 跟随 ｜ B 扔香蕉 ｜ F1 设置 ｜ ESC 退出",
+            };
+            using (var font = new Font("Microsoft YaHei UI", 13f, FontStyle.Bold))
+            using (var shadow = new SolidBrush(Color.FromArgb(alpha / 2, 0, 0, 0)))
+            using (var brush = new SolidBrush(Color.FromArgb(alpha, 255, 255, 255)))
+            {
                 float x = 18f, y = 14f;
-                using (var shadow = new SolidBrush(Color.FromArgb(alpha / 2, 0, 0, 0)))
-                    g.DrawString(text, font, shadow, x + 2f, y + 2f);
-                using (var brush = new SolidBrush(Color.FromArgb(alpha, 255, 255, 255)))
-                    g.DrawString(text, font, brush, x, y);
+                foreach (var line in lines)
+                {
+                    g.DrawString(line, font, shadow, x + 2f, y + 2f);
+                    g.DrawString(line, font, brush, x, y);
+                    y += 26f;
+                }
             }
         }
 
@@ -596,11 +691,107 @@ namespace baba
             return path;
         }
 
+        private void DrawBananas(Graphics g)
+        {
+            if (_bananas.Count == 0) return;
+            using var font = new Font("Segoe UI Emoji", 22f);
+            using var shadow = new SolidBrush(Color.FromArgb(120, 0, 0, 0));
+            foreach (var b in _bananas)
+            {
+                g.DrawString("🍌", font, shadow, b.X - 11f, b.Y - 10f);
+                g.DrawString("🍌", font, Brushes.Black, b.X - 12f, b.Y - 11f);
+            }
+        }
+
+        private void DrawScore(Graphics g)
+        {
+            if (_bananaScore <= 0) return;
+            string text = "🍌 抢到 " + _bananaScore + " 个";
+            using var font = new Font("Microsoft YaHei UI", 14f, FontStyle.Bold);
+            using var shadow = new SolidBrush(Color.FromArgb(120, 0, 0, 0));
+            using var brush = new SolidBrush(Color.FromArgb(235, 255, 255, 255));
+            g.DrawString(text, font, shadow, 20f, 68f);
+            g.DrawString(text, font, brush, 18f, 66f);
+        }
+
         // ==================== 交互 ====================
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            ResetIdle();
+            if (e.Button != MouseButtons.Left) return;
+
+            int id = HitTestMonkey(e.Location);
+            if (id > 0)
+            {
+                _dragId = id;
+                _mouseDown = true;
+                _dragStart = e.Location;
+                _lastMouse = e.Location;
+                var m = _monkeys[id - 1];
+                m.IsHeld = true;
+                m.IsSleeping = false;
+            }
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            ResetIdle();
+            _lastMouse = e.Location;
+
+            if (_dragId > 0 && _mouseDown)
+            {
+                var m = GetMonkeyById(_dragId);
+                if (m != null)
+                {
+                    m.X = e.Location.X;
+                    m.Y = e.Location.Y;
+                }
+            }
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            ResetIdle();
+            if (e.Button != MouseButtons.Left || _dragId <= 0) return;
+
+            int id = _dragId;
+            var m = GetMonkeyById(id);
+            _dragId = -1;
+            _mouseDown = false;
+            if (m == null) return;
+            m.IsHeld = false;
+            _suppressNextLeftClick = true; // 这次点击已处理，别让它去点齿轮
+
+            int dist = Math.Abs(e.Location.X - _dragStart.X) + Math.Abs(e.Location.Y - _dragStart.Y);
+            if (dist < 8)
+            {
+                // 没拖动 = 戳一下
+                PokeMonkey(id);
+            }
+            else
+            {
+                // 拖动 = 扔出去（速度按最后一下鼠标移动算）
+                float vx = (e.Location.X - _lastMouse.X) * 8f;
+                float vy = (e.Location.Y - _lastMouse.Y) * 8f;
+                m.SpeedX = Math.Clamp(vx, -1500f, 1500f);
+                m.SpeedY = Math.Clamp(vy, -1500f, 1500f);
+                m.ThrowTimer = 1.5f;
+                AddBubble(id, "咻——！");
+            }
+        }
 
         protected override void OnMouseClick(MouseEventArgs e)
         {
-            // 左键点右上角齿轮 → 打开设置
+            // 左键点右上角齿轮 → 打开设置（拖猴子之后这一次点击不再触发）
+            if (e.Button == MouseButtons.Left && _suppressNextLeftClick)
+            {
+                _suppressNextLeftClick = false;
+                return;
+            }
             if (e.Button == MouseButtons.Left && _gearRect.Contains(e.Location))
             {
                 OpenSettings();
@@ -630,13 +821,156 @@ namespace baba
             if (m == null) return;
 
             m.TriggerRoar(0.3f, 0.5f); // 定格 0.3 秒，吼叫放大 0.5 秒
-            _bubbles.Add(new SpeechBubble
-            {
-                MonkeyId = id,
-                StartTime = _elapsed,
-                Text = BubbleTexts[_rng.Next(BubbleTexts.Length)],
-            });
+            AddBubble(id, BubbleTexts[_rng.Next(BubbleTexts.Length)]);
             PlaySound();
+        }
+
+        // ==================== 趣味玩法 ====================
+
+        private void AddBubble(int id, string text)
+        {
+            _bubbles.Add(new SpeechBubble { MonkeyId = id, StartTime = _elapsed, Text = text });
+        }
+
+        /// <summary>返回鼠标点中的猴子 id（1 起），没点中返回 -1。</summary>
+        private int HitTestMonkey(Point p)
+        {
+            for (int i = 0; i < _monkeys.Count; i++)
+            {
+                Rectangle box = GetCollisionBox(_monkeys[i], _monkeys[i].X, _monkeys[i].Y);
+                box.Inflate(6, 6);
+                if (box.Contains(p)) return i + 1;
+            }
+            return -1;
+        }
+
+        /// <summary>戳一下：跳起来 + 气泡。</summary>
+        private void PokeMonkey(int id)
+        {
+            var m = GetMonkeyById(id);
+            if (m == null) return;
+            m.AirTime = 0.6f;      // 滞空 0.6 秒
+            m.SpeedY = -500f;      // 往上一蹦
+            m.SpeedX *= 0.2f;      // 别滑太远
+            AddBubble(id, "咦！");
+        }
+
+        private void ResetIdle()
+        {
+            _idleTime = 0f;
+            bool anySleeping = false;
+            foreach (var m in _monkeys)
+                if (m.IsSleeping) { anySleeping = true; break; }
+            if (anySleeping) WakeAll();
+        }
+
+        private void WakeAll()
+        {
+            foreach (var m in _monkeys)
+            {
+                if (m.IsSleeping)
+                {
+                    m.IsSleeping = false;
+                    m.RandomizeDirection();
+                }
+            }
+        }
+
+        /// <summary>F4 / API：所有猴子一起跳舞 8 秒。</summary>
+        public void StartDance()
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(StartDance));
+                return;
+            }
+            _danceEndTime = _elapsed + 8f;
+            foreach (var m in _monkeys)
+            {
+                m.IsSleeping = false;
+                m.IsDancing = true;
+            }
+            if (_monkeys.Count > 0) AddBubble(1, "🎵 蹦迪时间！");
+        }
+
+        /// <summary>F5 / API：切换“跟着鼠标走”。</summary>
+        public bool ToggleFollow()
+        {
+            if (InvokeRequired) return (bool)Invoke(new Func<bool>(ToggleFollow));
+            _followMode = !_followMode;
+            foreach (var m in _monkeys)
+            {
+                m.IsSleeping = false;
+                if (_followMode) m.RandomizeDirection();
+            }
+            return _followMode;
+        }
+
+        /// <summary>B / API：从屏幕顶部扔一根香蕉，猴子们抢着吃。</summary>
+        public void ThrowBanana()
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(ThrowBanana));
+                return;
+            }
+            if (_screenBounds.Width <= 0) return;
+            float x = _rng.Next(40, Math.Max(41, _screenBounds.Width - 40));
+            _bananas.Add(new Banana
+            {
+                X = x,
+                Y = -24f,
+                Vx = (float)(_rng.NextDouble() * 80 - 40),
+                Vy = 60f,
+            });
+            WakeAll();
+        }
+
+        private Banana? NearestBanana(MonkeyEntity m)
+        {
+            Banana? best = null;
+            float bestDist = float.MaxValue;
+            foreach (var b in _bananas)
+            {
+                float d = (b.X - m.X) * (b.X - m.X) + (b.Y - m.Y) * (b.Y - m.Y);
+                if (d < bestDist) { bestDist = d; best = b; }
+            }
+            return best;
+        }
+
+        private void UpdateBananas(float dt)
+        {
+            for (int i = _bananas.Count - 1; i >= 0; i--)
+            {
+                var b = _bananas[i];
+                b.Vy += 520f * dt;       // 重力下落
+                b.X += b.Vx * dt;
+                b.Y += b.Vy * dt;
+
+                if (b.Y > _screenBounds.Bottom - 16f || b.Y < -300f)
+                {
+                    _bananas.RemoveAt(i);
+                    continue;
+                }
+
+                // 谁先抢到谁吃
+                bool eaten = false;
+                for (int j = 0; j < _monkeys.Count && !eaten; j++)
+                {
+                    var m = _monkeys[j];
+                    if (m.IsSleeping) continue;
+                    Rectangle box = GetCollisionBox(m, m.X, m.Y);
+                    if (box.Contains((int)b.X, (int)b.Y))
+                    {
+                        _bananas.RemoveAt(i);
+                        _bananaScore++;
+                        m.ScaleBoost = 1.6f;
+                        AddBubble(j + 1, "🍌 我抢到啦！");
+                        PlaySound();
+                        eaten = true;
+                    }
+                }
+            }
         }
 
         /// <summary>让所有猴子一起喊“爸爸”（F3 / 设置按钮 / API 都走这里）。</summary>
@@ -662,6 +996,8 @@ namespace baba
 
         protected override void OnKeyDown(KeyEventArgs e)
         {
+            ResetIdle(); // 按了键就算“有人操作”，不睡觉
+
             if (e.KeyCode == Keys.Escape)
             {
                 RequestExit();
@@ -680,6 +1016,21 @@ namespace baba
             if (e.KeyCode == Keys.F3)
             {
                 RoarAll(); // 所有猴子一起喊爸爸
+                return;
+            }
+            if (e.KeyCode == Keys.F4)
+            {
+                StartDance(); // 一起跳舞
+                return;
+            }
+            if (e.KeyCode == Keys.F5)
+            {
+                ToggleFollow(); // 跟着鼠标走
+                return;
+            }
+            if (e.KeyCode == Keys.B)
+            {
+                ThrowBanana(); // 扔根香蕉
                 return;
             }
             base.OnKeyDown(e);
@@ -762,6 +1113,13 @@ namespace baba
         private MonkeyEntity? GetMonkeyById(int id) =>
             id >= 1 && id <= _monkeys.Count ? _monkeys[id - 1] : null;
 
+        private int GetMonkeyId(MonkeyEntity m)
+        {
+            for (int i = 0; i < _monkeys.Count; i++)
+                if (_monkeys[i] == m) return i + 1;
+            return 1;
+        }
+
         private static MonkeyInfo ToMonkeyInfo(int id, MonkeyEntity m) => new MonkeyInfo
         {
             Id = id,
@@ -811,6 +1169,51 @@ namespace baba
         {
             if (InvokeRequired) return (bool)Invoke(new Func<bool>(ApiRoarAll));
             RoarAll();
+            return true;
+        }
+
+        /// <summary>API：一起跳舞。</summary>
+        public bool ApiDance()
+        {
+            if (InvokeRequired) return (bool)Invoke(new Func<bool>(ApiDance));
+            StartDance();
+            return true;
+        }
+
+        /// <summary>API：扔一根香蕉。</summary>
+        public bool ApiThrowBanana()
+        {
+            if (InvokeRequired) return (bool)Invoke(new Func<bool>(ApiThrowBanana));
+            ThrowBanana();
+            return true;
+        }
+
+        /// <summary>API：切换“跟随鼠标”。</summary>
+        public bool ApiToggleFollow()
+        {
+            if (InvokeRequired) return (bool)Invoke(new Func<bool>(ApiToggleFollow));
+            return ToggleFollow();
+        }
+
+        /// <summary>API：戳一下某只猴子。</summary>
+        public bool ApiPoke(int id)
+        {
+            if (InvokeRequired) return (bool)Invoke(new Func<bool>(() => ApiPoke(id)));
+            if (GetMonkeyById(id) == null) return false;
+            PokeMonkey(id);
+            return true;
+        }
+
+        /// <summary>API：把某只猴子扔出去（?vx=&vy=）。</summary>
+        public bool ApiToss(int id, float vx, float vy)
+        {
+            if (InvokeRequired) return (bool)Invoke(new Func<bool>(() => ApiToss(id, vx, vy)));
+            var m = GetMonkeyById(id);
+            if (m == null) return false;
+            m.SpeedX = Math.Clamp(vx, -1500f, 1500f);
+            m.SpeedY = Math.Clamp(vy, -1500f, 1500f);
+            m.ThrowTimer = 1.5f;
+            AddBubble(id, "咻——！");
             return true;
         }
 
@@ -1001,6 +1404,12 @@ namespace baba
             public float StartTime;
             public string Text = "爸爸！";
             public float Duration = 1.6f;
+        }
+
+        /// <summary>一根香蕉（B 键扔出来，猴子们抢着吃）。</summary>
+        private sealed class Banana
+        {
+            public float X, Y, Vx, Vy;
         }
 
         // ==================== 默认图片生成 ====================

@@ -68,6 +68,16 @@
 - 摇晃: `sin(t*5+phase)*6°` 附加旋转
 - 打滚玩耍: 约每 7 秒随机一次 360° 翻滚（0.9s），ExtraAngle 叠加
 
+## Fun Interactions（趣味玩法）
+- 左键戳: 空气跳（AirTime 0.6s + vy -500，重力 1400），气泡「咦！」
+- 拖拽投掷: MouseDown 拾取 → MouseMove 跟随 → MouseUp 按最后速度*8 抛出，
+  ThrowTimer 1.5s 内摩擦 0.985，撞窗反弹
+- 一起跳舞 F4: `_danceEndTime = now+8s`，原地蹦 `|sin(t*10+phase)|*16` + 扭 `sin(t*12+phase)*10°`
+- 跟随鼠标 F5: 每帧 SteerToward(光标)
+- 扔香蕉 B: 顶部掉落，重力 520，猴子抢最近一根，抢到 +1 分 + ScaleBoost 1.6
+- 发呆睡觉: 45s 无操作 → IsSleeping 趴下(scaleY*0.85)+💤；任意鼠标/键盘唤醒
+- 气泡系统: SpeechBubble（白圆角+尾巴+文字），约 1.6s 淡出，全局复用
+
 ## Robustness
 - 全局异常捕获：UI 线程 + 非 UI 线程都只弹中文提示框，绝不允许闪退
 - 图片加载失败、音频加载失败、配置读写失败一律静默回退到默认值

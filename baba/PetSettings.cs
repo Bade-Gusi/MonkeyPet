@@ -22,6 +22,7 @@ namespace baba
         public bool HasSeenTutorial { get; set; }         // 是否看过新手教程
         public bool ApiEnabled { get; set; } = true;      // 启用本机控制 API
         public int ApiPort { get; set; } = 17580;         // 控制 API 端口
+        public bool AutoStart { get; set; }               // 开机自启动
         public List<string?> ImagePaths { get; set; } = new List<string?>(); // 每只猴子的自选图片（跟着数量走）
 
         public string? GetImagePath(int index) =>
@@ -48,6 +49,7 @@ namespace baba
             ObstaclesEnabled = true;
             ApiEnabled = true;
             ApiPort = 17580;
+            AutoStart = false;
             ImagePaths.Clear();
         }
     }

@@ -52,6 +52,7 @@ namespace baba
         private CheckBox _hintCheck = new CheckBox();
         private CheckBox _groupCheck = new CheckBox();
         private CheckBox _obstacleCheck = new CheckBox();
+        private CheckBox _autoStartCheck = new CheckBox();
 
         // 猴子图片
         private readonly Label _imgHeader = new Label();
@@ -122,7 +123,8 @@ namespace baba
             _hintCheck = new CheckBox { Text = "显示操作提示", Location = new Point(20, 52), AutoSize = true };
             _groupCheck = new CheckBox { Text = "群聚行为", Location = new Point(220, 52), AutoSize = true };
             _obstacleCheck = new CheckBox { Text = "窗口障碍", Location = new Point(20, 78), AutoSize = true };
-            _gBehavior.Controls.AddRange(new Control[] { _topMostCheck, _soundCheck, _hintCheck, _groupCheck, _obstacleCheck });
+            _autoStartCheck = new CheckBox { Text = "开机自启动", Location = new Point(220, 78), AutoSize = true };
+            _gBehavior.Controls.AddRange(new Control[] { _topMostCheck, _soundCheck, _hintCheck, _groupCheck, _obstacleCheck, _autoStartCheck });
 
             _tabMain.Controls.Add(_gMonkey);
             _tabMain.Controls.Add(_gAction);
@@ -324,6 +326,7 @@ namespace baba
             _hintCheck.Checked = _settings.ShowHint;
             _groupCheck.Checked = _settings.GroupingEnabled;
             _obstacleCheck.Checked = _settings.ObstaclesEnabled;
+            _autoStartCheck.Checked = _settings.AutoStart;
             _apiCheck.Checked = _settings.ApiEnabled;
             UpdateApiLabel();
             UpdateValueLabels();
@@ -342,6 +345,7 @@ namespace baba
             _hintCheck.CheckedChanged += (s, e) => SaveAndApply();
             _groupCheck.CheckedChanged += (s, e) => SaveAndApply();
             _obstacleCheck.CheckedChanged += (s, e) => SaveAndApply();
+            _autoStartCheck.CheckedChanged += (s, e) => _pet.SetAutoStart(_autoStartCheck.Checked);
             _cutoutBtn.Click += (s, e) => OpenCutout();
             _openAssetsBtn.Click += (s, e) => OpenAssetsFolder();
             _license.LinkClicked += (s, e) =>
@@ -478,6 +482,7 @@ namespace baba
             LoadValues();
             _pet.SetMonkeyCount(_settings.MonkeyCount);
             _pet.ApplySettings();
+            _pet.SetAutoStart(_settings.AutoStart); // 默认关 → 同时清掉注册表自启动
             for (int i = 0; i < _settings.MonkeyCount; i++)
                 _pet.SetMonkeyImage(i, null);
             SettingsStore.Save(_settings);

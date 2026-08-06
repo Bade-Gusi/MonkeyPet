@@ -118,7 +118,7 @@ namespace baba
         {
             Text = "猴群宠物";
             FormBorderStyle = FormBorderStyle.None;
-            WindowState = FormWindowState.Maximized;
+            WindowState = FormWindowState.Normal; // 手动铺满虚拟屏（多显示器/任意分辨率）
             TopMost = true;
             BackColor = Color.Magenta;          // 透明底色
             TransparencyKey = Color.Magenta;    // 该颜色全透明，实现桌面穿透效果
@@ -127,13 +127,31 @@ namespace baba
             ShowInTaskbar = true;
             Cursor = Cursors.Arrow;
             StartPosition = FormStartPosition.Manual;
-            Rectangle primary = Screen.PrimaryScreen?.Bounds ?? Screen.AllScreens[0].Bounds;
-            Location = primary.Location;
-            Size = primary.Size;
-            _screenBounds = primary;
+            ApplyScreenBounds();
 
             _graphicsContext = BufferedGraphicsManager.Current;
             _graphicsContext.MaximumBuffer = new Size(_screenBounds.Width + 1, _screenBounds.Height + 1);
+        }
+
+        /// <summary>把窗口铺满所有显示器的“虚拟屏幕”，并把猴子上限夹回屏幕内。</summary>
+        private void ApplyScreenBounds()
+        {
+            Rectangle vs = SystemInformation.VirtualScreen;
+            if (vs.Width <= 0 || vs.Height <= 0)
+                vs = Screen.PrimaryScreen?.Bounds ?? new Rectangle(0, 0, 1920, 1080);
+
+            Location = vs.Location;
+            Size = vs.Size;
+            _screenBounds = vs;
+
+            foreach (var m in _monkeys)
+            {
+                m.X = Math.Clamp(m.X, _screenBounds.Left + 15, _screenBounds.Right - 15);
+                m.Y = Math.Clamp(m.Y, _screenBounds.Top + 15, _screenBounds.Bottom - 15);
+            }
+
+            if (_graphicsContext != null)
+                _graphicsContext.MaximumBuffer = new Size(_screenBounds.Width + 1, _screenBounds.Height + 1);
         }
 
         private void LoadSprites()
@@ -1074,6 +1092,15 @@ namespace baba
             else StopControlApi();
         }
 
+        /// <summary>开机自启动开关（写/删当前用户注册表 Run 键）。</summary>
+        public void SetAutoStart(bool enabled)
+        {
+            _settings.AutoStart = enabled;
+            if (enabled) AutoStartHelper.Enable();
+            else AutoStartHelper.Disable();
+            SettingsStore.Save(_settings);
+        }
+
         private void StartControlApi()
         {
             StopControlApi();
@@ -1353,14 +1380,17 @@ namespace baba
         {
             base.OnShown(e);
 
-            // 以窗体实际占据的区域为准（最大化后可能不含任务栏）
-            Rectangle primary = Screen.PrimaryScreen?.Bounds ?? Screen.AllScreens[0].Bounds;
-            _screenBounds = Rectangle.Intersect(primary, this.Bounds);
+            // 窗体实际铺满的区域就是活动范围
+            _screenBounds = this.Bounds;
             foreach (var m in _monkeys)
             {
                 m.X = Math.Clamp(m.X, _screenBounds.Left + 15, _screenBounds.Right - 15);
                 m.Y = Math.Clamp(m.Y, _screenBounds.Top + 15, _screenBounds.Bottom - 15);
             }
+
+            // 开机自启动与设置同步（用户手动删了注册表也能自动补回来）
+            if (_settings.AutoStart) AutoStartHelper.Enable();
+            else AutoStartHelper.Disable();
 
             Activate();
             Focus();
@@ -1384,6 +1414,34 @@ namespace baba
 
             // 启动本机控制 API（如果设置里开着）
             StartControlApi();
+        }
+
+        /// <summary>分辨率/显示器数量变化时，把窗口重新铺满虚拟屏并把猴子夹回屏幕内。</summary>
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            if (_screenBounds == Bounds) return;
+
+            Rectangle vs = SystemInformation.VirtualScreen;
+            _screenBounds = vs.Width > 0 ? vs : Bounds;
+            foreach (var m in _monkeys)
+            {
+                m.X = Math.Clamp(m.X, _screenBounds.Left + 15, _screenBounds.Right - 15);
+                m.Y = Math.Clamp(m.Y, _screenBounds.Top + 15, _screenBounds.Bottom - 15);
+            }
+            if (_graphicsContext != null)
+                _graphicsContext.MaximumBuffer = new Size(_screenBounds.Width + 1, _screenBounds.Height + 1);
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            const int WM_DISPLAYCHANGE = 0x007E;
+            if (m.Msg == WM_DISPLAYCHANGE)
+            {
+                // 换分辨率/插拔显示器：回到 UI 线程重新铺满
+                try { BeginInvoke(new Action(ApplyScreenBounds)); } catch { }
+            }
+            base.WndProc(ref m);
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)

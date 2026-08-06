@@ -55,6 +55,10 @@
 - 关于页: 新手教程 / 试听叫声 / 恢复默认 / 退出程序 按钮 + 开源链接
 - 新手教程: 第一次运行自动弹出，F2 随时再看（HelpForm）
 - 防误关: 主窗体 OnFormClosing 拦截外部误发的 UserClosing，仅放行 ESC/退出按钮
+- 屏幕适配: 主窗体铺满 SystemInformation.VirtualScreen（所有显示器），
+  OnResize + WM_DISPLAYCHANGE 重新铺满并把猴子夹回屏内；缓冲区按虚拟屏尺寸重建
+- 开机自启动: 优先注册表 HKCU Run 键，被锁则回退到启动文件夹 .lnk 快捷方式；
+  设置「行为」勾选即生效，启动时按设置同步注册表
 - 控制 API: 内置极简 HTTP 服务（`TcpListener` 只绑 `127.0.0.1`，默认端口 17580），
   每只猴子按 ID 可控（`/api/monkeys/{id}/roar|move|speed|image`），设置支持局部更新，
   `/api/exit` 退出；设置「关于」页可开关/看地址

@@ -4,7 +4,7 @@ using System.Drawing;
 namespace baba
 {
     /// <summary>
-    /// 猴子实体：只管自己的坐标、速度、朝向、颠簸相位和“吼叫”状态。
+    /// 物品实体：只管自己的坐标、速度、朝向、颠簸相位和“吼叫”状态。
     /// 不含任何窗体/绘制逻辑，绘制与碰撞检测由 MainForm 完成。
     /// </summary>
     public sealed class MonkeyEntity
@@ -13,7 +13,7 @@ namespace baba
         public float SpeedX, SpeedY;      // 速度（像素/秒）
         public float Angle;               // 当前朝向角（弧度，0 = 朝右）
         public float ExtraAngle;          // 额外旋转角（打滚玩耍用，弧度）
-        public readonly float Phase;      // 正弦波随机相位，让每只猴子的颠簸不同步
+        public readonly float Phase;      // 正弦波随机相位，让每只物品的颠簸不同步
         public float Scale = 1.0f;        // 绘制缩放（吼叫时临时放大）
         public float ScaleBoost = 1f;     // 临时变大（吃香蕉等）
         public float SpeedFactor = 1f;    // 速度倍率（设置面板可调）
@@ -57,7 +57,7 @@ namespace baba
             SpeedY = (float)Math.Sin(a) * speed;
         }
 
-        /// <summary>调整速度倍率（按比例缩放当前速度，避免猴子突然跳变）。</summary>
+        /// <summary>调整速度倍率（按比例缩放当前速度，避免物品突然跳变）。</summary>
         public void SetSpeedFactor(float factor)
         {
             if (factor <= 0f) factor = 0.01f;

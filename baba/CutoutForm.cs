@@ -10,7 +10,7 @@ namespace baba
 {
     /// <summary>
     /// 傻瓜式抠图工具：打开一张合影/人物照片，点一下背景色，拖一下容差，
-    /// 背景就变透明了，人物留下来。然后“保存为 1号/2号/3号/4号 猴子”即可。
+    /// 背景就变透明了，人物留下来。然后“保存为 1号/2号/3号/4号 物品”即可。
     /// 原理是纯图片像素处理（颜色抠像），完全不碰任何游戏进程。
     /// </summary>
     public sealed class CutoutForm : Form
@@ -35,7 +35,7 @@ namespace baba
         {
             _pet = pet;
 
-            Text = "猴群宠物 · 抠图工具";
+            Text = "弹性桌面物品 · 抠图工具";
             ClientSize = new Size(740, 585);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -92,17 +92,17 @@ namespace baba
             _previewCheck.AutoSize = true;
             Controls.Add(_previewCheck);
 
-            var lblSave = new Label { Text = "保存为猴子：", Location = new Point(x, 278), AutoSize = true };
+            var lblSave = new Label { Text = "保存为物品：", Location = new Point(x, 278), AutoSize = true };
             Controls.Add(lblSave);
 
-            // 保存按钮跟着当前猴子数量走（设几只就显示几个）
+            // 保存按钮跟着当前物品数量走（设几只就显示几个）
             int monkeyCount = Math.Max(1, _pet.Settings.MonkeyCount);
             for (int i = 0; i < monkeyCount; i++)
             {
                 int index = i;
                 var btn = new Button
                 {
-                    Text = (i + 1) + "号 🐵",
+                    Text = (i + 1) + "号",
                     Location = new Point(x + (i % 2) * 112, 300 + (i / 2) * 40),
                     Size = new Size(104, 34),
                 };
@@ -126,8 +126,8 @@ namespace baba
                        "1) 点【打开图片】选你的合影照片\r\n" +
                        "2) 点【选背景色】，再在照片的空白背景上点一下\r\n" +
                        "3) 拖【容差】直到背景透明、人物保留\r\n" +
-                       "4) 点【保存为 1号🐵 / 2号 / 3号 / 4号】\r\n" +
-                       "5) 回到设置窗口关掉，猴子就换成这四个人了",
+                       "4) 点【保存为 1号 / 2号 / 3号 / 4号】\r\n" +
+                       "5) 回到设置窗口关掉，物品就换成这四个人了",
                 Location = new Point(12, 490),
                 Size = new Size(700, 90),
                 ForeColor = Color.Gray,
@@ -192,7 +192,7 @@ namespace baba
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, "打不开这张图片：\n" + ex.Message, "猴群宠物", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show(this, "打不开这张图片：\n" + ex.Message, "弹性桌面物品", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
         }
@@ -201,7 +201,7 @@ namespace baba
         {
             if (_source == null)
             {
-                MessageBox.Show(this, "请先点【打开图片】选一张照片。", "猴群宠物", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "请先点【打开图片】选一张照片。", "弹性桌面物品", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             _picking = !_picking;
@@ -361,7 +361,7 @@ namespace baba
         {
             if (_cutout == null)
             {
-                MessageBox.Show(this, "还没有抠好的图，请先打开图片并选背景色。", "猴群宠物", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "还没有抠好的图，请先打开图片并选背景色。", "弹性桌面物品", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -378,13 +378,13 @@ namespace baba
                 SettingsStore.Save(_pet.Settings);
 
                 MessageBox.Show(this,
-                    "已保存为 " + (index + 1) + " 号猴子！\n\n" +
+                    "已保存为 " + (index + 1) + " 号物品！\n\n" +
                     "回到设置窗口关掉它，回主界面就能看到效果了。",
-                    "猴群宠物", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    "弹性桌面物品", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "保存失败：\n" + ex.Message, "猴群宠物", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, "保存失败：\n" + ex.Message, "弹性桌面物品", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -392,7 +392,7 @@ namespace baba
         {
             if (_cutout == null)
             {
-                MessageBox.Show(this, "还没有抠好的图。", "猴群宠物", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "还没有抠好的图。", "弹性桌面物品", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             using (var dlg = new SaveFileDialog())
@@ -403,7 +403,7 @@ namespace baba
                 if (dlg.ShowDialog(this) == DialogResult.OK)
                 {
                     try { _cutout.Save(dlg.FileName, ImageFormat.Png); }
-                    catch (Exception ex) { MessageBox.Show(this, "保存失败：\n" + ex.Message, "猴群宠物", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+                    catch (Exception ex) { MessageBox.Show(this, "保存失败：\n" + ex.Message, "弹性桌面物品", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
                 }
             }
         }

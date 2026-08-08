@@ -17,11 +17,11 @@ namespace baba
      * ================================================================
      *  使用者操作指南：
      *   1. 双击 baba.sln 用 Visual Studio 2022 打开项目，按 F5 启动。
-     *   2. 右键点击猴子 → 它定住 0.3 秒并大喊（播放 assets\dad.wav，没有就用系统“哔哔”两声）。
-     *   3. 点右上角齿轮按钮（或按 F1）打开【设置】窗口，可以改猴子数量、速度、
+     *   2. 右键点击物品 → 它定住 0.3 秒并大喊（播放 assets\dad.wav，没有就用系统“哔哔”两声）。
+     *   3. 点右上角齿轮按钮（或按 F1）打开【设置】窗口，可以改物品数量、速度、
      *      颠簸幅度、群聚距离、置顶、声音、换图片等，改完立刻生效，不用重启。
      *   4. 按 ESC 键退出程序。
-     *   5. 把 4 张透明 PNG 改名为 p1.png~p4.png 放进 assets 文件夹也可自定义猴子。
+     *   5. 把 4 张透明 PNG 改名为 p1.png~p4.png 放进 assets 文件夹也可自定义物品。
      * ================================================================
      */
     public class MainForm : Form
@@ -95,7 +95,7 @@ namespace baba
         private Point _dragStart;
         private Point _lastMouse;
         private bool _suppressNextLeftClick;
-        private bool _followMode;          // F5：猴子跟着鼠标走
+        private bool _followMode;          // F5：物品跟着鼠标走
         private float _danceEndTime;       // 跳舞结束时间
         private float _idleTime;           // 用户多久没操作
 
@@ -115,7 +115,7 @@ namespace baba
 
         private void InitializeWindow()
         {
-            Text = "猴群宠物";
+            Text = "弹性桌面物品";
             FormBorderStyle = FormBorderStyle.None;
             WindowState = FormWindowState.Normal; // 手动铺满虚拟屏（多显示器/任意分辨率）
             TopMost = true;
@@ -132,7 +132,7 @@ namespace baba
             _graphicsContext.MaximumBuffer = new Size(_screenBounds.Width + 1, _screenBounds.Height + 1);
         }
 
-        /// <summary>把窗口铺满所有显示器的“虚拟屏幕”，并把猴子上限夹回屏幕内。</summary>
+        /// <summary>把窗口铺满所有显示器的“虚拟屏幕”，并把物品上限夹回屏幕内。</summary>
         private void ApplyScreenBounds()
         {
             Rectangle vs = SystemInformation.VirtualScreen;
@@ -161,7 +161,7 @@ namespace baba
                 _sprites.Add(LoadOneSprite(i));
         }
 
-        /// <summary>加载第 index 只猴子的图片：自选路径 → assets\pN.png → 默认卡通脸。</summary>
+        /// <summary>加载第 index 只物品的图片：自选路径 → assets\pN.png → 默认卡通脸。</summary>
         private Image LoadOneSprite(int index)
         {
             string assetsDir = Path.Combine(Application.StartupPath, AssetsDirName);
@@ -183,7 +183,7 @@ namespace baba
             return CreateDefaultSprite(DefaultColors[index % DefaultColors.Length], index + 1);
         }
 
-        /// <summary>让图片池数量跟着猴子数量走（加就补、减就删）。</summary>
+        /// <summary>让图片池数量跟着物品数量走（加就补、减就删）。</summary>
         private void ResizeSprites(int count)
         {
             count = Math.Clamp(count, 1, 6);
@@ -240,7 +240,7 @@ namespace baba
         /// <summary>当前设置对象（抠图工具等需要读取/保存）。</summary>
         public PetSettings Settings => _settings;
 
-        /// <summary>当前每只猴子的图片（设置面板的缩略图用）。</summary>
+        /// <summary>当前每只物品的图片（设置面板的缩略图用）。</summary>
         public IReadOnlyList<Image> Sprites => _sprites;
 
         /// <summary>把当前设置应用到正在运行中的状态（改完立刻生效）。</summary>
@@ -262,7 +262,7 @@ namespace baba
             Invalidate();
         }
 
-        /// <summary>设置猴子数量（1~6），立刻重建。</summary>
+        /// <summary>设置物品数量（1~6），立刻重建。</summary>
         public void SetMonkeyCount(int count)
         {
             count = Math.Clamp(count, 1, 6);
@@ -273,7 +273,7 @@ namespace baba
             ApplySettings();
         }
 
-        /// <summary>更换某只猴子的图片（index 0~3，path 传 null 表示恢复默认脸）。</summary>
+        /// <summary>更换某只物品的图片（index 0~3，path 传 null 表示恢复默认脸）。</summary>
         public void SetMonkeyImage(int index, string? path)
         {
             if (index < 0 || index >= _sprites.Count) return;
@@ -537,7 +537,7 @@ namespace baba
             float drawX = m.X + bobX;
             float drawY = m.Y + bobY;
 
-            // 挤压拉伸：爬行时身体一鼓一鼓，像猴子用四肢爬；再叠加上“猴子大小”缩放
+            // 挤压拉伸：爬行时身体一鼓一鼓，像物品用四肢爬；再叠加上“物品大小”缩放
             float squash = (float)Math.Sin(_elapsed * 8.0 + m.Phase) * 0.07f;
             float scaleX = m.Scale * _sizeScale * m.ScaleBoost * (1f + squash);
             float scaleY = m.Scale * _sizeScale * m.ScaleBoost * (1f - squash);
@@ -801,7 +801,7 @@ namespace baba
 
         protected override void OnMouseClick(MouseEventArgs e)
         {
-            // 左键点右上角齿轮 → 打开设置（拖猴子之后这一次点击不再触发）
+            // 左键点右上角齿轮 → 打开设置（拖物品之后这一次点击不再触发）
             if (e.Button == MouseButtons.Left && _suppressNextLeftClick)
             {
                 _suppressNextLeftClick = false;
@@ -829,7 +829,7 @@ namespace baba
             }
         }
 
-        /// <summary>让某只猴子喊“爸爸”：定格、放大、弹气泡、播声音。UI 线程调用。</summary>
+        /// <summary>让某只物品喊“爸爸”：定格、放大、弹气泡、播声音。UI 线程调用。</summary>
         private void RoarMonkey(int id)
         {
             var m = GetMonkeyById(id);
@@ -856,7 +856,7 @@ namespace baba
             return valid.Count == 0 ? "爸爸！" : valid[_rng.Next(valid.Count)];
         }
 
-        /// <summary>返回鼠标点中的猴子 id（1 起），没点中返回 -1。</summary>
+        /// <summary>返回鼠标点中的物品 id（1 起），没点中返回 -1。</summary>
         private int HitTestMonkey(Point p)
         {
             for (int i = 0; i < _monkeys.Count; i++)
@@ -900,7 +900,7 @@ namespace baba
             }
         }
 
-        /// <summary>F4 / API：所有猴子一起跳舞 8 秒。</summary>
+        /// <summary>F4 / API：所有物品一起跳舞 8 秒。</summary>
         public void StartDance()
         {
             if (InvokeRequired)
@@ -930,7 +930,7 @@ namespace baba
             return _followMode;
         }
 
-        /// <summary>B / API：从屏幕顶部扔一根香蕉，猴子们抢着吃。</summary>
+        /// <summary>B / API：从屏幕顶部扔一根香蕉，物品们抢着吃。</summary>
         public void ThrowBanana()
         {
             if (InvokeRequired)
@@ -997,7 +997,7 @@ namespace baba
             }
         }
 
-        /// <summary>让所有猴子一起喊“爸爸”（F3 / 设置按钮 / API 都走这里）。</summary>
+        /// <summary>让所有物品一起喊“爸爸”（F3 / 设置按钮 / API 都走这里）。</summary>
         public void RoarAll()
         {
             if (InvokeRequired)
@@ -1039,7 +1039,7 @@ namespace baba
             }
             if (e.KeyCode == Keys.F3)
             {
-                RoarAll(); // 所有猴子一起喊爸爸
+                RoarAll(); // 所有物品一起喊爸爸
                 return;
             }
             if (e.KeyCode == Keys.F4)
@@ -1137,7 +1137,8 @@ namespace baba
 
         public object ApiStatus() => new
         {
-            app = "MonkeyPet",
+            app = "弹性桌面物品",
+            version = UpdateChecker.CurrentVersion.ToString(3),
             running = true,
             monkeyCount = _monkeys.Count,
             apiUrl = ApiUrl,
@@ -1197,7 +1198,7 @@ namespace baba
             return true;
         }
 
-        /// <summary>API：所有猴子一起喊“爸爸”。</summary>
+        /// <summary>API：所有物品一起喊“爸爸”。</summary>
         public bool ApiRoarAll()
         {
             if (InvokeRequired) return (bool)Invoke(new Func<bool>(ApiRoarAll));
@@ -1228,7 +1229,7 @@ namespace baba
             return ToggleFollow();
         }
 
-        /// <summary>API：戳一下某只猴子。</summary>
+        /// <summary>API：戳一下某只物品。</summary>
         public bool ApiPoke(int id)
         {
             if (InvokeRequired) return (bool)Invoke(new Func<bool>(() => ApiPoke(id)));
@@ -1237,7 +1238,7 @@ namespace baba
             return true;
         }
 
-        /// <summary>API：把某只猴子扔出去（?vx=&vy=）。</summary>
+        /// <summary>API：把某只物品扔出去（?vx=&vy=）。</summary>
         public bool ApiToss(int id, float vx, float vy)
         {
             if (InvokeRequired) return (bool)Invoke(new Func<bool>(() => ApiToss(id, vx, vy)));
@@ -1426,11 +1427,11 @@ namespace baba
             // 一次性中文提示（之后不再打扰）
             var messages = new List<string>();
             if (_missingImages)
-                messages.Add("没找到猴子的图片，已用默认卡通脸代替。\n点设置窗口『猴子图片』页的【打开素材文件夹】按钮，\n把 p1~p4.png 丢进去，重启程序即可。");
+                messages.Add("没找到物品的图片，已用默认卡通脸代替。\n点设置窗口『物品图片』页的【打开素材文件夹】按钮，\n把 p1~p4.png 丢进去，重启程序即可。");
             if (_missingAudio)
-                messages.Add("没找到叫声音频，右键时用系统提示音代替。\n点设置窗口『猴子图片』页的【打开素材文件夹】按钮，\n把 dad.wav 丢进去，重启程序即可。");
+                messages.Add("没找到叫声音频，右键时用系统提示音代替。\n点设置窗口『物品图片』页的【打开素材文件夹】按钮，\n把 dad.wav 丢进去，重启程序即可。");
             if (messages.Count > 0)
-                MessageBox.Show(string.Join("\n\n", messages), "猴群宠物", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(string.Join("\n\n", messages), "弹性桌面物品", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             // 第一次运行：弹出新手教程（之后按 F2 或设置里的按钮可再看）
             if (!_settings.HasSeenTutorial)
@@ -1442,9 +1443,37 @@ namespace baba
 
             // 启动本机控制 API（如果设置里开着）
             StartControlApi();
+
+            // 自动检查 GitHub 新版本（异步，不影响启动）
+            if (_settings.AutoUpdateCheck)
+                _ = CheckForUpdatesAsync();
         }
 
-        /// <summary>分辨率/显示器数量变化时，把窗口重新铺满虚拟屏并把猴子夹回屏幕内。</summary>
+        /// <summary>异步检查 GitHub 最新 Release，有新版本就弹个小窗。</summary>
+        private async System.Threading.Tasks.Task CheckForUpdatesAsync()
+        {
+            try
+            {
+                string? latest = await UpdateChecker.GetLatestVersionAsync();
+                if (string.IsNullOrEmpty(latest) || !UpdateChecker.IsNewer(latest)) return;
+
+                BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        var f = new UpdateNotifyForm(latest, UpdateChecker.ReleasesUrl);
+                        f.Show();
+                    }
+                    catch { }
+                }));
+            }
+            catch
+            {
+                // 查不到就不打扰（离线/被墙/没发布都算）
+            }
+        }
+
+        /// <summary>分辨率/显示器数量变化时，把窗口重新铺满虚拟屏并把物品夹回屏幕内。</summary>
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
@@ -1492,7 +1521,7 @@ namespace baba
             public float Duration = 1.6f;
         }
 
-        /// <summary>一根香蕉（B 键扔出来，猴子们抢着吃）。</summary>
+        /// <summary>一根香蕉（B 键扔出来，物品们抢着吃）。</summary>
         private sealed class Banana
         {
             public float X, Y, Vx, Vy;
@@ -1546,7 +1575,7 @@ namespace baba
                     g.DrawArc(mouth, 28, 50, 40, 24, 20, 140);
                 }
 
-                // 右上角数字标识（第几只猴子）
+                // 右上角数字标识（第几只物品）
                 using (var font = new Font("Microsoft YaHei UI", 12f, FontStyle.Bold))
                 using (var textBrush = new SolidBrush(Color.FromArgb(60, 60, 60)))
                 {

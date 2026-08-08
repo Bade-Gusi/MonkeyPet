@@ -11,7 +11,7 @@ namespace baba
         public int MonkeyCount { get; set; } = 4;
         public int SpeedPercent { get; set; } = 100;      // 移动速度 %
         public int BobAmount { get; set; } = 100;         // 爬行颠簸幅度 %
-        public int SizePercent { get; set; } = 100;       // 猴子大小 %
+        public int SizePercent { get; set; } = 100;       // 物品大小 %
         public int TumbleRate { get; set; } = 100;        // 打滚频率 %（0 = 不打滚）
         public int GroupDistance { get; set; } = 500;     // 群聚距离（像素）
         public bool TopMost { get; set; } = true;         // 始终置顶
@@ -23,7 +23,8 @@ namespace baba
         public bool ApiEnabled { get; set; } = true;      // 启用本机控制 API
         public int ApiPort { get; set; } = 17580;         // 控制 API 端口
         public bool AutoStart { get; set; }               // 开机自启动
-        public List<string?> ImagePaths { get; set; } = new List<string?>(); // 每只猴子的自选图片（跟着数量走）
+        public bool AutoUpdateCheck { get; set; } = true;  // 启动时自动检查新版本
+        public List<string?> ImagePaths { get; set; } = new List<string?>(); // 每只物品的自选图片（跟着数量走）
 
         // ===== 自定义文字（全部可在设置里改） =====
         public List<string> BubbleTexts { get; set; } = new List<string> { "爸爸！", "叫爸爸！", "诶，爸爸！", "爸爸爸爸！" };
@@ -60,6 +61,7 @@ namespace baba
             ApiEnabled = true;
             ApiPort = 17580;
             AutoStart = false;
+            AutoUpdateCheck = true;
             ImagePaths.Clear();
             BubbleTexts = new List<string> { "爸爸！", "叫爸爸！", "诶，爸爸！", "爸爸爸爸！" };
             PokeText = "咦！";

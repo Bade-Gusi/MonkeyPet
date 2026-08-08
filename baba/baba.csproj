@@ -9,6 +9,10 @@
     <RootNamespace>baba</RootNamespace>
     <AssemblyName>baba</AssemblyName>
     <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode>
+    <Version>2.0.0</Version>
+    <Product>弹性桌面物品</Product>
+    <AssemblyTitle>弹性桌面物品</AssemblyTitle>
+    <Description>弹性桌面物品 - 全屏桌面小物：爬行、弹跳、喊爸爸、抢香蕉、自动更新</Description>
   </PropertyGroup>
 
   <ItemGroup>

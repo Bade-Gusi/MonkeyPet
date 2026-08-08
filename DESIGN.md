@@ -1,18 +1,18 @@
-# 猴群宠物 — Design System
+# 弹性桌面物品 — Design System
 
 > 由 DESIGN.md 技能生成：记录本项目在生成 UI/素材时的统一设计规范，
 > 保证后续由 AI 生成的内容风格一致。
 
 ## Brand
-- Name: 猴群宠物 (Monkey Pet)
+- Name: 弹性桌面物品 (Monkey Pet)
 - Tone: playful / silly / warm（可爱、胡闹、暖色）
 
 ## Colors
 - 透明色 Key: Magenta `#FF00FF`（窗体底色，会被置为全透明，实现桌面穿透）
-- 猴子 1 (p1): Orange `#FF783C`
-- 猴子 2 (p2): Blue `#4682FF`
-- 猴子 3 (p3): Green `#50C878`
-- 猴子 4 (p4): Gold `#FFC83C`
+- 物品 1 (p1): Orange `#FF783C`
+- 物品 2 (p2): Blue `#4682FF`
+- 物品 3 (p3): Green `#50C878`
+- 物品 4 (p4): Gold `#FFC83C`
 - 描边 / 眼睛 / 线条: Ink `#323232`
 - 提示文字: White `#FFFFFF`，投影 `#00000080`
 
@@ -38,32 +38,35 @@
 
 ## Settings Window（设置面板）
 - 打开方式: 主界面右上角齿轮按钮 或 F1；点 ESC 只关设置不退出
-- 布局: TabControl 三分页（基本设置 / 猴子图片 / 关于），470x600，FixedDialog，居中，TopMost
+- 布局: TabControl 三分页（基本设置 / 物品图片 / 关于），470x600，FixedDialog，居中，TopMost
 - 控件字体: Microsoft YaHei UI 9pt；标题 16pt Bold
 - 基本设置:
-  - 猴子数量 1~6（默认 4）
+  - 物品数量 1~6（默认 4）
   - 移动速度 20~200%（默认 100）
   - 爬行幅度 0~200%（默认 100）
-  - 猴子大小 50~300%（默认 100）
+  - 物品大小 50~300%（默认 100）
   - 打滚频率 0~200%（默认 100；0 = 不打滚）
   - 群聚距离 100~1000px（默认 500）
 - 行为勾选项: 始终置顶 / 启用叫声 / 显示操作提示 / 群聚行为 / 窗口障碍
-- 图片槽位: **跟着猴子数量走**（1~6），每只一个缩略图 + 「N号 换图」按钮，
+- 图片槽位: **跟着物品数量走**（1~6），每只一个缩略图 + 「N号 换图」按钮，
   换图后立即刷新缩略图；图片路径存在 settings.json 的 `ImagePaths` 列表里
 - 抠图工具: 颜色抠像（纯图片像素处理，不碰游戏进程）——选背景色 + 容差 + 边缘柔化，
-  预览后保存为 1~N 号猴子（保存按钮也跟随数量）；自动取四角平均色当默认背景色
+  预览后保存为 1~N 号物品（保存按钮也跟随数量）；自动取四角平均色当默认背景色
 - 关于页: 新手教程 / 试听叫声 / 恢复默认 / 退出程序 按钮 + 开源链接
 - 新手教程: 第一次运行自动弹出，F2 随时再看（HelpForm）
 - 防误关: 主窗体 OnFormClosing 拦截外部误发的 UserClosing，仅放行 ESC/退出按钮
 - 屏幕适配: 主窗体铺满 SystemInformation.VirtualScreen（所有显示器），
-  OnResize + WM_DISPLAYCHANGE 重新铺满并把猴子夹回屏内；缓冲区按虚拟屏尺寸重建
+  OnResize + WM_DISPLAYCHANGE 重新铺满并把物品夹回屏内；缓冲区按虚拟屏尺寸重建
+- 版本与更新: `<Version>2.0.0</Version>`；UpdateChecker 异步对比 GitHub Releases/latest，
+  有新版本弹 UpdateNotifyForm（非模态）；设置「行为」可关自动检查，「关于」有手动检查按钮；
+  API 的 `/api/items` 是 `/api/monkeys` 的别名
 - 开机自启动: 优先注册表 HKCU Run 键，被锁则回退到启动文件夹 .lnk 快捷方式；
   设置「行为」勾选即生效，启动时按设置同步注册表
 - 自定义文字: 设置「自定义文字」页签可编辑——BubbleTexts(每行一条随机挑)、
   PokeText/TossText/DanceText/BananaText/SleepText/HintText(可换行)；
   API 支持局部更新这些字段
 - 控制 API: 内置极简 HTTP 服务（`TcpListener` 只绑 `127.0.0.1`，默认端口 17580），
-  每只猴子按 ID 可控（`/api/monkeys/{id}/roar|move|speed|image`），设置支持局部更新，
+  每只物品按 ID 可控（`/api/monkeys/{id}/roar|move|speed|image`），设置支持局部更新，
   `/api/exit` 退出；设置「关于」页可开关/看地址
 - 持久化: `%AppData%\MonkeyPet\settings.json`，改动即存，启动时加载
 - 图标语义: 按钮使用 Emoji 图标 + 中文文字（🔊试听 ♻恢复 ✖退出 📖教程 🐵N号）
@@ -81,7 +84,7 @@
   ThrowTimer 1.5s 内摩擦 0.985，撞窗反弹
 - 一起跳舞 F4: `_danceEndTime = now+8s`，原地蹦 `|sin(t*10+phase)|*16` + 扭 `sin(t*12+phase)*10°`
 - 跟随鼠标 F5: 每帧 SteerToward(光标)
-- 扔香蕉 B: 顶部掉落，重力 520，猴子抢最近一根，抢到 +1 分 + ScaleBoost 1.6
+- 扔香蕉 B: 顶部掉落，重力 520，物品抢最近一根，抢到 +1 分 + ScaleBoost 1.6
 - 发呆睡觉: 45s 无操作 → IsSleeping 趴下(scaleY*0.85)+💤；任意鼠标/键盘唤醒
 - 气泡系统: SpeechBubble（白圆角+尾巴+文字），约 1.6s 淡出，全局复用
 

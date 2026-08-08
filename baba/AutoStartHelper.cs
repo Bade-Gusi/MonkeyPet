@@ -17,7 +17,7 @@ namespace baba
 
         private static string StartupShortcutPath => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.Startup),
-            "猴群宠物.lnk");
+            "弹性桌面物品.lnk");
 
         public static void Enable()
         {
@@ -43,7 +43,7 @@ namespace baba
                 dynamic shortcut = shell.CreateShortcut(StartupShortcutPath);
                 shortcut.TargetPath = Application.ExecutablePath;
                 shortcut.WorkingDirectory = Path.GetDirectoryName(Application.ExecutablePath) ?? "";
-                shortcut.Description = "猴群宠物";
+                shortcut.Description = "弹性桌面物品";
                 shortcut.Save();
                 Marshal.FinalReleaseComObject(shell);
             }

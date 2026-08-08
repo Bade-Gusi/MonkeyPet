@@ -10,7 +10,7 @@ using System.Threading;
 
 namespace baba
 {
-    /// <summary>单只猴子的 API 快照（给控制接口用）。</summary>
+    /// <summary>单只物品的 API 快照（给控制接口用）。</summary>
     public sealed class MonkeyInfo
     {
         public int Id { get; set; }
@@ -26,7 +26,7 @@ namespace baba
 
     /// <summary>
     /// 本机控制 API：一个极简的 HTTP 服务，只监听 127.0.0.1。
-    /// 每个猴子都是一个"对象"，都能通过 /api/monkeys/&lt;id&gt;/... 单独控制。
+    /// 每个物品都是一个"对象"，都能通过 /api/monkeys/&lt;id&gt;/... 单独控制。
     /// 不需要管理员权限（监听回环地址即可），不开外挂、不碰游戏进程。
     /// </summary>
     public sealed class ControlApiServer : IDisposable
@@ -202,6 +202,7 @@ namespace baba
                         return (400, Json(new { error = "use POST" }));
 
                     case "monkeys":
+                    case "items": // 改名后的别名，旧路径 /api/monkeys 也继续可用
                         if (segs.Length == 2 && method == "GET")
                             return (200, Json(_form.ApiListMonkeys()));
                         if (segs.Length == 3 && segs[2] == "roar-all" && method == "POST")

@@ -74,7 +74,7 @@ namespace baba
         {
             try
             {
-                MessageBox.Show(message, "猴群宠物", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(message, "弹性桌面物品", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             catch
             {

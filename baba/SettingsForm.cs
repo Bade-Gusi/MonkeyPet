@@ -10,8 +10,8 @@ using System.Windows.Forms;
 namespace baba
 {
     /// <summary>
-    /// 傻瓜式设置窗口：分三个页签（基本设置 / 猴子图片 / 关于），全中文大字，
-    /// 改完立刻生效、自动保存。猴子图片槽位跟着数量走，带实时缩略图。
+    /// 傻瓜式设置窗口：分三个页签（基本设置 / 物品图片 / 关于），全中文大字，
+    /// 改完立刻生效、自动保存。物品图片槽位跟着数量走，带实时缩略图。
     /// 右上角齿轮按钮或 F1 打开。
     /// </summary>
     public sealed class SettingsForm : Form
@@ -24,7 +24,7 @@ namespace baba
 
         private readonly TabControl _tabs = new TabControl();
         private readonly TabPage _tabMain = new TabPage("基本设置");
-        private readonly TabPage _tabImages = new TabPage("猴子图片");
+        private readonly TabPage _tabImages = new TabPage("物品图片");
         private readonly TabPage _tabText = new TabPage("自定义文字");
         private readonly TabPage _tabAbout = new TabPage("关于");
 
@@ -37,8 +37,8 @@ namespace baba
         private readonly TextBox _sleepBox = new TextBox();
         private readonly TextBox _hintBox = new TextBox { Multiline = true };
 
-        // 基本：猴子数量
-        private readonly GroupBox _gMonkey = new GroupBox { Text = "猴子" };
+        // 基本：物品数量
+        private readonly GroupBox _gMonkey = new GroupBox { Text = "物品" };
         private readonly TrackBar _countBar = new TrackBar();
         private Label _countValue = new Label();
 
@@ -63,8 +63,9 @@ namespace baba
         private CheckBox _groupCheck = new CheckBox();
         private CheckBox _obstacleCheck = new CheckBox();
         private CheckBox _autoStartCheck = new CheckBox();
+        private CheckBox _autoUpdateCheck = new CheckBox();
 
-        // 猴子图片
+        // 物品图片
         private readonly Label _imgHeader = new Label();
         private readonly Button _cutoutBtn = new Button();
         private readonly Button _openAssetsBtn = new Button();
@@ -81,7 +82,7 @@ namespace baba
             _pet = pet;
             _settings = settings;
 
-            Text = "猴群宠物 · 设置";
+            Text = "弹性桌面物品 · 设置";
             ClientSize = new Size(470, 600);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -113,7 +114,7 @@ namespace baba
 
             _gMonkey.Location = new Point(12, 12);
             _gMonkey.Size = new Size(430, 70);
-            _gMonkey.Controls.Add(new Label { Text = "猴子数量", Location = new Point(20, 26), AutoSize = true });
+            _gMonkey.Controls.Add(new Label { Text = "物品数量", Location = new Point(20, 26), AutoSize = true });
             ConfigureBar(_countBar, 1, 6, 1, new Point(100, 18), new Size(232, 36));
             _gMonkey.Controls.Add(_countBar);
             _countValue = new Label { Text = "4 只", Location = new Point(348, 26), AutoSize = true };
@@ -123,27 +124,28 @@ namespace baba
             _gAction.Size = new Size(430, 252);
             AddSlider(_gAction, "移动速度", _speedBar, _speedValue, 14, 20, 200, 20);
             AddSlider(_gAction, "爬行幅度", _bobBar, _bobValue, 60, 0, 200, 20);
-            AddSlider(_gAction, "猴子大小", _sizeBar, _sizeValue, 106, 50, 300, 25);
+            AddSlider(_gAction, "物品大小", _sizeBar, _sizeValue, 106, 50, 300, 25);
             AddSlider(_gAction, "打滚频率", _tumbleBar, _tumbleValue, 152, 0, 200, 20);
             AddSlider(_gAction, "群聚距离", _groupBar, _groupValue, 198, 100, 1000, 100);
 
             _gBehavior.Location = new Point(12, 350);
-            _gBehavior.Size = new Size(430, 116);
+            _gBehavior.Size = new Size(430, 132);
             _topMostCheck = new CheckBox { Text = "始终置顶", Location = new Point(20, 26), AutoSize = true };
             _soundCheck = new CheckBox { Text = "启用叫声", Location = new Point(220, 26), AutoSize = true };
             _hintCheck = new CheckBox { Text = "显示操作提示", Location = new Point(20, 52), AutoSize = true };
             _groupCheck = new CheckBox { Text = "群聚行为", Location = new Point(220, 52), AutoSize = true };
             _obstacleCheck = new CheckBox { Text = "窗口障碍", Location = new Point(20, 78), AutoSize = true };
             _autoStartCheck = new CheckBox { Text = "开机自启动", Location = new Point(220, 78), AutoSize = true };
-            _gBehavior.Controls.AddRange(new Control[] { _topMostCheck, _soundCheck, _hintCheck, _groupCheck, _obstacleCheck, _autoStartCheck });
+            _autoUpdateCheck = new CheckBox { Text = "自动检查更新", Location = new Point(20, 104), AutoSize = true };
+            _gBehavior.Controls.AddRange(new Control[] { _topMostCheck, _soundCheck, _hintCheck, _groupCheck, _obstacleCheck, _autoStartCheck, _autoUpdateCheck });
 
             _tabMain.Controls.Add(_gMonkey);
             _tabMain.Controls.Add(_gAction);
             _tabMain.Controls.Add(_gBehavior);
 
-            // ---------- 猴子图片 ----------
+            // ---------- 物品图片 ----------
             _tabImages.AutoScroll = true;
-            _imgHeader.Text = "每只猴子单独换图，缩略图实时预览：";
+            _imgHeader.Text = "每只物品单独换图，缩略图实时预览：";
             _imgHeader.AutoSize = true;
             _cutoutBtn.Text = "🖼 抠图工具…";
             _cutoutBtn.Size = new Size(124, 32);
@@ -168,7 +170,7 @@ namespace baba
             var gAbout = new GroupBox { Text = "本程序", Location = new Point(12, 12), Size = new Size(430, 360) };
             gAbout.Controls.Add(new Label
             {
-                Text = "🐵 猴群宠物 · 开源桌面宠物",
+                Text = "🧸 弹性桌面物品 · 开源桌面小物",
                 Font = new Font("Microsoft YaHei UI", 12f, FontStyle.Bold),
                 Location = new Point(20, 26),
                 AutoSize = true,
@@ -188,9 +190,11 @@ namespace baba
             togetherBtn.Click += (s, e) => _pet.RoarAll();
             var resetBtn = new Button { Text = "♻ 恢复默认", Location = new Point(220, 176), Size = new Size(190, 44) };
             resetBtn.Click += (s, e) => ResetAll();
-            var exitBtn = new Button { Text = "✖ 退出程序", Location = new Point(20, 232), Size = new Size(390, 40) };
+            var updateBtn = new Button { Text = "🔍 检查更新", Location = new Point(220, 232), Size = new Size(190, 40) };
+            updateBtn.Click += async (s, e) => await CheckForUpdatesAsync(updateBtn);
+            var exitBtn = new Button { Text = "✖ 退出程序", Location = new Point(20, 232), Size = new Size(190, 40) };
             exitBtn.Click += (s, e) => _pet.RequestExit();
-            gAbout.Controls.AddRange(new Control[] { helpBtn, soundBtn, togetherBtn, resetBtn, exitBtn });
+            gAbout.Controls.AddRange(new Control[] { helpBtn, soundBtn, togetherBtn, resetBtn, updateBtn, exitBtn });
 
             _license.Text = "🔓 本程序已在 GitHub 开源（MIT 协议）：\r\n" + RepoUrl + "\r\n可以随便改、随便用、随便发给朋友～";
             _license.Location = new Point(20, 284);
@@ -208,7 +212,7 @@ namespace baba
 
             gApi.Controls.Add(new Label
             {
-                Text = "每个猴子都是一个对象，都能用 ID 单独控制：\r\n" +
+                Text = "每个物品都是一个对象，都能用 ID 单独控制：\r\n" +
                        "GET /api/monkeys  ·  POST /api/monkeys/<id>/roar 等",
                 Location = new Point(20, 54),
                 AutoSize = true,
@@ -278,7 +282,7 @@ namespace baba
             y += height + 14;
         }
 
-        // ==================== 猴子图片动态槽位 ====================
+        // ==================== 物品图片动态槽位 ====================
 
         private void RelayoutImages()
         {
@@ -362,6 +366,7 @@ namespace baba
             _groupCheck.Checked = _settings.GroupingEnabled;
             _obstacleCheck.Checked = _settings.ObstaclesEnabled;
             _autoStartCheck.Checked = _settings.AutoStart;
+            _autoUpdateCheck.Checked = _settings.AutoUpdateCheck;
             _apiCheck.Checked = _settings.ApiEnabled;
             _roarTextsBox.Lines = _settings.BubbleTexts.Where(t => !string.IsNullOrWhiteSpace(t)).ToArray();
             _pokeBox.Text = _settings.PokeText;
@@ -388,6 +393,7 @@ namespace baba
             _groupCheck.CheckedChanged += (s, e) => SaveAndApply();
             _obstacleCheck.CheckedChanged += (s, e) => SaveAndApply();
             _autoStartCheck.CheckedChanged += (s, e) => _pet.SetAutoStart(_autoStartCheck.Checked);
+            _autoUpdateCheck.CheckedChanged += (s, e) => SaveAndApply();
             _roarTextsBox.TextChanged += (s, e) => SaveAndApply();
             _pokeBox.TextChanged += (s, e) => SaveAndApply();
             _tossBox.TextChanged += (s, e) => SaveAndApply();
@@ -436,6 +442,7 @@ namespace baba
             _settings.ShowHint = _hintCheck.Checked;
             _settings.GroupingEnabled = _groupCheck.Checked;
             _settings.ObstaclesEnabled = _obstacleCheck.Checked;
+            _settings.AutoUpdateCheck = _autoUpdateCheck.Checked;
             _settings.BubbleTexts = _roarTextsBox.Lines.Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
             _settings.PokeText = _pokeBox.Text;
             _settings.TossText = _tossBox.Text;
@@ -464,6 +471,41 @@ namespace baba
         {
             bool on = _pet.ApiToggleFollow();
             _followBtn.Text = on ? "🐒 跟随鼠标：开（再点关）" : "🐒 跟随鼠标（F5）";
+        }
+
+        private async System.Threading.Tasks.Task CheckForUpdatesAsync(Button btn)
+        {
+            btn.Enabled = false;
+            btn.Text = "检查中…";
+            try
+            {
+                string? latest = await UpdateChecker.GetLatestVersionAsync();
+                if (string.IsNullOrEmpty(latest))
+                {
+                    MessageBox.Show(this, "暂时查不到更新，可能是网络问题或还没发布新版本。",
+                        "弹性桌面物品", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                if (UpdateChecker.IsNewer(latest))
+                {
+                    new UpdateNotifyForm(latest, UpdateChecker.ReleasesUrl).Show();
+                }
+                else
+                {
+                    MessageBox.Show(this, "已经是最新版 v" + UpdateChecker.CurrentVersion.ToString(3) + "！",
+                        "弹性桌面物品", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "检查更新失败：" + ex.Message,
+                    "弹性桌面物品", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            finally
+            {
+                btn.Enabled = true;
+                btn.Text = "🔍 检查更新";
+            }
         }
 
         private void UpdateApiLabel()
@@ -502,7 +544,7 @@ namespace baba
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "打不开素材文件夹：\n" + ex.Message, "猴群宠物", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, "打不开素材文件夹：\n" + ex.Message, "弹性桌面物品", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -518,7 +560,7 @@ namespace baba
         {
             using (var dlg = new OpenFileDialog())
             {
-                dlg.Title = "选择第 " + (index + 1) + " 号猴子的图片（建议透明 PNG）";
+                dlg.Title = "选择第 " + (index + 1) + " 号物品的图片（建议透明 PNG）";
                 dlg.Filter = "图片文件|*.png;*.jpg;*.jpeg;*.bmp|PNG 图片|*.png|所有文件|*.*";
                 if (dlg.ShowDialog(this) == DialogResult.OK)
                 {
@@ -526,8 +568,8 @@ namespace baba
                     SettingsStore.Save(_settings);
                     RelayoutImages(); // 刷新缩略图
                     MessageBox.Show(this,
-                        "已给 " + (index + 1) + " 号猴子换上图片！",
-                        "猴群宠物", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        "已给 " + (index + 1) + " 号物品换上图片！",
+                        "弹性桌面物品", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
         }
@@ -543,7 +585,7 @@ namespace baba
                 _pet.SetMonkeyImage(i, null);
             SettingsStore.Save(_settings);
             RelayoutImages();
-            MessageBox.Show(this, "已恢复全部默认设置！", "猴群宠物", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, "已恢复全部默认设置！", "弹性桌面物品", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         protected override void OnKeyDown(KeyEventArgs e)

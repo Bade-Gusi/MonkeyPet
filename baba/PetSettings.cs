@@ -24,6 +24,9 @@ namespace baba
         public int ApiPort { get; set; } = 17580;         // 控制 API 端口
         public bool AutoStart { get; set; }               // 开机自启动
         public bool AutoUpdateCheck { get; set; } = true;  // 启动时自动检查新版本
+        public int CollisionSizePercent { get; set; } = 60;   // 碰撞体积大小 %（相对物品图片）
+        public bool ItemCollisionEnabled { get; set; } = true;// 物品之间互相碰撞
+        public int BounceElasticity { get; set; } = 60;       // 弹性/弹力 %
         public List<string?> ImagePaths { get; set; } = new List<string?>(); // 每只物品的自选图片（跟着数量走）
 
         // ===== 自定义文字（全部可在设置里改） =====
@@ -62,6 +65,9 @@ namespace baba
             ApiPort = 17580;
             AutoStart = false;
             AutoUpdateCheck = true;
+            CollisionSizePercent = 60;
+            ItemCollisionEnabled = true;
+            BounceElasticity = 60;
             ImagePaths.Clear();
             BubbleTexts = new List<string> { "爸爸！", "叫爸爸！", "诶，爸爸！", "爸爸爸爸！" };
             PokeText = "咦！";

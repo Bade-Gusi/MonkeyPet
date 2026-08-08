@@ -77,6 +77,9 @@ namespace baba
         private float _groupDistance = 500f;
         private float _bobScale = 1f;
         private float _sizeScale = 1f;
+        private float _collisionScale = 0.6f;
+        private float _bounceElasticity = 0.6f;
+        private bool _itemCollisionEnabled = true;
         private bool _groupingEnabled = true;
         private bool _obstaclesEnabled = true;
         private bool _soundEnabled = true;
@@ -250,6 +253,9 @@ namespace baba
             _groupDistance = Math.Max(50f, _settings.GroupDistance);
             _bobScale = Math.Clamp(_settings.BobAmount, 0, 300) / 100f;
             _sizeScale = Math.Clamp(_settings.SizePercent, 20, 300) / 100f;
+            _collisionScale = Math.Clamp(_settings.CollisionSizePercent, 20, 200) / 100f;
+            _bounceElasticity = Math.Clamp(_settings.BounceElasticity, 0, 100) / 100f;
+            _itemCollisionEnabled = _settings.ItemCollisionEnabled;
             _groupingEnabled = _settings.GroupingEnabled;
             _obstaclesEnabled = _settings.ObstaclesEnabled;
             _soundEnabled = _settings.SoundEnabled;
@@ -433,27 +439,80 @@ namespace baba
                     m.SpeedY *= 0.985f;
                 }
 
-                // 卡在窗口里就先找最近的空路跑出去，别被钉死在原地
-                bool stuck = IntersectsObstacle(GetCollisionBox(m, m.X, m.Y));
-                if (stuck) Unstick(m);
+                // 卡在窗口里就先找最近的空路跑出去；出屏幕的部分单独处理
+                bool inWindow = IntersectsWindow(GetCollisionBox(m, m.X, m.Y));
+                bool outside = IsOutsideScreen(GetCollisionBox(m, m.X, m.Y));
+                if (inWindow && !outside) Unstick(m);
 
-                // 水平方向独立试探：撞上就沿法线反弹，并加一点随机扰动
+                // 水平方向独立试探：屏幕边界永远不许出；只有卡在窗口里才允许穿窗逃出来
                 float nx = m.X + m.SpeedX * dt;
-                if (stuck || !IntersectsObstacle(GetCollisionBox(m, nx, m.Y)))
+                var boxNx = GetCollisionBox(m, nx, m.Y);
+                if (!IsOutsideScreen(boxNx) && (inWindow || !IntersectsWindow(boxNx)))
                     m.X = nx;
                 else
-                    m.SpeedX = -m.SpeedX + (float)(_rng.NextDouble() * 20 - 10);
+                    m.SpeedX = -m.SpeedX * _bounceElasticity + (float)(_rng.NextDouble() * 20 - 10);
 
                 float ny = m.Y + m.SpeedY * dt;
-                if (stuck || !IntersectsObstacle(GetCollisionBox(m, m.X, ny)))
+                var boxNy = GetCollisionBox(m, m.X, ny);
+                if (!IsOutsideScreen(boxNy) && (inWindow || !IntersectsWindow(boxNy)))
                     m.Y = ny;
                 else
-                    m.SpeedY = -m.SpeedY + (float)(_rng.NextDouble() * 60 - 30);
+                    m.SpeedY = -m.SpeedY * _bounceElasticity + (float)(_rng.NextDouble() * 60 - 30);
 
                 m.UpdateAngle();
             }
 
             UpdateBananas(dt);
+
+            // 物品之间互相碰撞（弹性弹开）
+            if (_itemCollisionEnabled)
+                ResolveItemCollisions();
+        }
+
+        /// <summary>物品两两弹性碰撞：推开放置 + 沿法线交换速度。</summary>
+        private void ResolveItemCollisions()
+        {
+            for (int i = 0; i < _monkeys.Count; i++)
+            {
+                for (int j = i + 1; j < _monkeys.Count; j++)
+                {
+                    var a = _monkeys[i];
+                    var b = _monkeys[j];
+                    if (a.IsHeld || b.IsHeld) continue;          // 拖着的别推
+                    if (a.IsSleeping && b.IsSleeping) continue;
+
+                    float dx = b.X - a.X;
+                    float dy = b.Y - a.Y;
+                    float dist = (float)Math.Sqrt(dx * dx + dy * dy);
+                    float minDist = CollisionRadius(a) + CollisionRadius(b);
+                    if (dist >= minDist || dist < 0.001f) continue;
+
+                    float nx = dx / dist, ny = dy / dist;
+                    float overlap = minDist - dist;
+
+                    // 推开
+                    if (!a.IsSleeping) { a.X -= nx * overlap * 0.5f; a.Y -= ny * overlap * 0.5f; }
+                    if (!b.IsSleeping) { b.X += nx * overlap * 0.5f; b.Y += ny * overlap * 0.5f; }
+
+                    // 沿法线按弹力交换速度（弹性碰撞）
+                    float va = a.SpeedX * nx + a.SpeedY * ny;
+                    float vb = b.SpeedX * nx + b.SpeedY * ny;
+                    float e = _bounceElasticity;
+                    float vaNew = vb * e;
+                    float vbNew = va * e;
+                    a.SpeedX += (vaNew - va) * nx;
+                    a.SpeedY += (vaNew - va) * ny;
+                    b.SpeedX += (vbNew - vb) * nx;
+                    b.SpeedY += (vbNew - vb) * ny;
+                }
+            }
+
+            // 防止被推开后挤出屏幕
+            foreach (var m in _monkeys)
+            {
+                m.X = Math.Clamp(m.X, _screenBounds.Left + 8, _screenBounds.Right - 8);
+                m.Y = Math.Clamp(m.Y, _screenBounds.Top + 8, _screenBounds.Bottom - 8);
+            }
         }
 
         /// <summary>落单（最近同伴超过群聚距离）时有 20% 概率向群体中心靠拢。</summary>
@@ -483,30 +542,36 @@ namespace baba
 
         // ==================== 碰撞判定 ====================
 
-        /// <summary>碰撞箱：图片宽高各缩小 40%，即 60% 尺寸，防止视觉擦边卡顿。</summary>
-        private static Rectangle GetCollisionBox(MonkeyEntity m, float x, float y)
+        /// <summary>碰撞箱：大小由「碰撞体积」设置控制（相对图片的百分比）。</summary>
+        private Rectangle GetCollisionBox(MonkeyEntity m, float x, float y)
         {
-            int w = Math.Max(8, (int)(m.Width * 0.6f));
-            int h = Math.Max(8, (int)(m.Height * 0.6f));
+            int w = Math.Max(8, (int)(m.Width * _collisionScale));
+            int h = Math.Max(8, (int)(m.Height * _collisionScale));
             return new Rectangle((int)(x - w / 2f), (int)(y - h / 2f), w, h);
         }
 
-        private bool IntersectsObstacle(Rectangle box)
+        /// <summary>是否已经出屏幕（永远不允许，防止跑丢）。</summary>
+        private bool IsOutsideScreen(Rectangle box) =>
+            box.Left < _screenBounds.Left || box.Top < _screenBounds.Top ||
+            box.Right > _screenBounds.Right || box.Bottom > _screenBounds.Bottom;
+
+        /// <summary>是否撞到某个窗口（可关）。</summary>
+        private bool IntersectsWindow(Rectangle box)
         {
-            // 屏幕四边 = 禁区（永远生效，防止跑丢）
-            if (box.Left < _screenBounds.Left || box.Top < _screenBounds.Top ||
-                box.Right > _screenBounds.Right || box.Bottom > _screenBounds.Bottom)
-                return true;
-
-            // 关掉“窗口障碍”后就不躲窗口了
             if (!_obstaclesEnabled) return false;
-
             foreach (var r in _obstacles)
             {
                 if (Rectangle.Inflate(r, 2, 2).IntersectsWith(box)) return true;
             }
             return false;
         }
+
+        private bool IntersectsObstacle(Rectangle box) =>
+            IsOutsideScreen(box) || IntersectsWindow(box);
+
+        /// <summary>物品互相碰撞用的圆形半径。</summary>
+        private float CollisionRadius(MonkeyEntity m) =>
+            Math.Min(m.Width, m.Height) * 0.5f * _collisionScale;
 
         /// <summary>物品卡在窗口里时，向外一圈圈找最近的空路，朝那边跑。</summary>
         private void Unstick(MonkeyEntity m)
@@ -1321,6 +1386,9 @@ namespace baba
                 ApplyInt(root, "SizePercent", v => _settings.SizePercent = Math.Clamp(v, 20, 300));
                 ApplyInt(root, "TumbleRate", v => _settings.TumbleRate = Math.Clamp(v, 0, 200));
                 ApplyInt(root, "GroupDistance", v => _settings.GroupDistance = Math.Clamp(v, 50, 2000));
+                ApplyInt(root, "CollisionSizePercent", v => _settings.CollisionSizePercent = Math.Clamp(v, 20, 200));
+                ApplyInt(root, "BounceElasticity", v => _settings.BounceElasticity = Math.Clamp(v, 0, 100));
+                ApplyBool(root, "ItemCollisionEnabled", v => _settings.ItemCollisionEnabled = v);
                 ApplyInt(root, "ApiPort", v => _settings.ApiPort = Math.Clamp(v, 1024, 65535));
                 ApplyBool(root, "TopMost", v => _settings.TopMost = v);
                 ApplyBool(root, "SoundEnabled", v => _settings.SoundEnabled = v);

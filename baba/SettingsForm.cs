@@ -26,7 +26,15 @@ namespace baba
         private readonly TabPage _tabMain = new TabPage("基本设置");
         private readonly TabPage _tabImages = new TabPage("物品图片");
         private readonly TabPage _tabText = new TabPage("自定义文字");
+        private readonly TabPage _tabPhysics = new TabPage("碰撞物理");
         private readonly TabPage _tabAbout = new TabPage("关于");
+
+        // 碰撞物理
+        private readonly TrackBar _collisionBar = new TrackBar();
+        private Label _collisionValue = new Label();
+        private CheckBox _itemCollisionCheck = new CheckBox();
+        private readonly TrackBar _bounceBar = new TrackBar();
+        private Label _bounceValue = new Label();
 
         // 自定义文字
         private readonly TextBox _roarTextsBox = new TextBox { Multiline = true };
@@ -107,6 +115,7 @@ namespace baba
             _tabs.TabPages.Add(_tabMain);
             _tabs.TabPages.Add(_tabImages);
             _tabs.TabPages.Add(_tabText);
+            _tabs.TabPages.Add(_tabPhysics);
             _tabs.TabPages.Add(_tabAbout);
 
             // ---------- 基本设置 ----------
@@ -164,6 +173,22 @@ namespace baba
             AddTextField(gText, "睡觉时：", _sleepBox, 26, ref ty);
             AddTextField(gText, "左上角操作提示（可换行）：", _hintBox, 64, ref ty);
             _tabText.Controls.Add(gText);
+
+            // ---------- 碰撞物理 ----------
+            _tabPhysics.AutoScroll = true;
+            var gPhysics = new GroupBox { Text = "碰撞 & 物理", Location = new Point(12, 12), Size = new Size(430, 200) };
+            AddSlider(gPhysics, "碰撞体积", _collisionBar, _collisionValue, 14, 40, 120, 10);
+            _itemCollisionCheck = new CheckBox { Text = "物品之间会互相碰撞（弹开）", Location = new Point(20, 62), AutoSize = true };
+            gPhysics.Controls.Add(_itemCollisionCheck);
+            AddSlider(gPhysics, "弹性/弹力", _bounceBar, _bounceValue, 92, 0, 100, 10);
+            gPhysics.Controls.Add(new Label
+            {
+                Text = "碰撞体积越大越容易撞到别人/窗口；弹力越大，\r\n撞上之后弹得越开（0 = 撞上就停）。",
+                Location = new Point(20, 150),
+                AutoSize = true,
+                ForeColor = Color.Gray,
+            });
+            _tabPhysics.Controls.Add(gPhysics);
 
             // ---------- 关于 ----------
             _tabAbout.AutoScroll = true;
@@ -367,6 +392,9 @@ namespace baba
             _obstacleCheck.Checked = _settings.ObstaclesEnabled;
             _autoStartCheck.Checked = _settings.AutoStart;
             _autoUpdateCheck.Checked = _settings.AutoUpdateCheck;
+            _collisionBar.Value = Math.Clamp(_settings.CollisionSizePercent, _collisionBar.Minimum, _collisionBar.Maximum);
+            _bounceBar.Value = Math.Clamp(_settings.BounceElasticity, _bounceBar.Minimum, _bounceBar.Maximum);
+            _itemCollisionCheck.Checked = _settings.ItemCollisionEnabled;
             _apiCheck.Checked = _settings.ApiEnabled;
             _roarTextsBox.Lines = _settings.BubbleTexts.Where(t => !string.IsNullOrWhiteSpace(t)).ToArray();
             _pokeBox.Text = _settings.PokeText;
@@ -394,6 +422,9 @@ namespace baba
             _obstacleCheck.CheckedChanged += (s, e) => SaveAndApply();
             _autoStartCheck.CheckedChanged += (s, e) => _pet.SetAutoStart(_autoStartCheck.Checked);
             _autoUpdateCheck.CheckedChanged += (s, e) => SaveAndApply();
+            _collisionBar.Scroll += (s, e) => SaveAndApply();
+            _bounceBar.Scroll += (s, e) => SaveAndApply();
+            _itemCollisionCheck.CheckedChanged += (s, e) => SaveAndApply();
             _roarTextsBox.TextChanged += (s, e) => SaveAndApply();
             _pokeBox.TextChanged += (s, e) => SaveAndApply();
             _tossBox.TextChanged += (s, e) => SaveAndApply();
@@ -445,6 +476,9 @@ namespace baba
             _settings.GroupingEnabled = _groupCheck.Checked;
             _settings.ObstaclesEnabled = _obstacleCheck.Checked;
             _settings.AutoUpdateCheck = _autoUpdateCheck.Checked;
+            _settings.CollisionSizePercent = _collisionBar.Value;
+            _settings.BounceElasticity = _bounceBar.Value;
+            _settings.ItemCollisionEnabled = _itemCollisionCheck.Checked;
             _settings.BubbleTexts = _roarTextsBox.Lines.Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
             _settings.PokeText = _pokeBox.Text;
             _settings.TossText = _tossBox.Text;
@@ -480,6 +514,8 @@ namespace baba
             _sizeValue.Text = _sizeBar.Value + "%";
             _tumbleValue.Text = _tumbleBar.Value <= 0 ? "关" : _tumbleBar.Value + "%";
             _groupValue.Text = _groupBar.Value + " px";
+            _collisionValue.Text = _collisionBar.Value + "%";
+            _bounceValue.Text = _bounceBar.Value + "%";
         }
 
         private void UpdateFollowBtn()

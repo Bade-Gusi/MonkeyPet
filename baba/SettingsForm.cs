@@ -254,10 +254,10 @@ namespace baba
             bar.TickFrequency = tickFreq;
             bar.SmallChange = Math.Max(1, (max - min) / 20);
             bar.LargeChange = Math.Max(1, (max - min) / 10);
-            bar.TickStyle = TickStyle.None;
-            bar.AutoSize = false;
+            bar.TickStyle = TickStyle.BottomRight; // 带刻度，看着就像能拖
+            bar.AutoSize = true;                   // 自然高度，滑块拇指看得见、好抓
             bar.Location = location;
-            bar.Size = size;
+            bar.Width = size.Width;
             bar.Value = min;
         }
 
@@ -429,6 +429,8 @@ namespace baba
             };
         }
 
+        private int _lastSaveTick;
+
         private void SaveAndApply()
         {
             _settings.MonkeyCount = _countBar.Value;
@@ -454,7 +456,20 @@ namespace baba
             UpdateValueLabels();
             _pet.SetMonkeyCount(_countBar.Value);
             _pet.ApplySettings();
-            SettingsStore.Save(_settings);
+
+            // 拖滑块时别每帧都写盘，防止卡顿；关窗时再存一次
+            int now = Environment.TickCount;
+            if (now - _lastSaveTick > 400)
+            {
+                _lastSaveTick = now;
+                SettingsStore.Save(_settings);
+            }
+        }
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            SettingsStore.Save(_settings); // 关设置窗口时确保全部保存
+            base.OnFormClosed(e);
         }
 
         private void UpdateValueLabels()

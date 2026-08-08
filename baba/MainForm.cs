@@ -557,9 +557,9 @@ namespace baba
 
         private void DrawMonkey(Graphics g, MonkeyEntity m)
         {
-            // 温和的移动：只有一点点上下浮动，不搞夸张效果（幅度仍受“爬行幅度”设置控制）
-            float bobX = (float)Math.Sin(_elapsed * 2.0 + m.Phase) * (2f * _bobScale);
-            float bobY = (float)Math.Sin(_elapsed * 3.0 + m.Phase) * (3f * _bobScale);
+            // 有节奏的上下浮动（像走路颠一下），幅度由「爬行幅度」设置控制（0~200%）
+            float bobX = (float)Math.Sin(_elapsed * 4.0 + m.Phase) * (3f * _bobScale);
+            float bobY = (float)Math.Sin(_elapsed * 5.0 + m.Phase) * (6f * _bobScale);
             float drawX = m.X + bobX;
             float drawY = m.Y + bobY;
 

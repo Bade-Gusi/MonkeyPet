@@ -433,15 +433,19 @@ namespace baba
                     m.SpeedY *= 0.985f;
                 }
 
+                // 卡在窗口里就先找最近的空路跑出去，别被钉死在原地
+                bool stuck = IntersectsObstacle(GetCollisionBox(m, m.X, m.Y));
+                if (stuck) Unstick(m);
+
                 // 水平方向独立试探：撞上就沿法线反弹，并加一点随机扰动
                 float nx = m.X + m.SpeedX * dt;
-                if (!IntersectsObstacle(GetCollisionBox(m, nx, m.Y)))
+                if (stuck || !IntersectsObstacle(GetCollisionBox(m, nx, m.Y)))
                     m.X = nx;
                 else
                     m.SpeedX = -m.SpeedX + (float)(_rng.NextDouble() * 20 - 10);
 
                 float ny = m.Y + m.SpeedY * dt;
-                if (!IntersectsObstacle(GetCollisionBox(m, m.X, ny)))
+                if (stuck || !IntersectsObstacle(GetCollisionBox(m, m.X, ny)))
                     m.Y = ny;
                 else
                     m.SpeedY = -m.SpeedY + (float)(_rng.NextDouble() * 60 - 30);
@@ -504,6 +508,28 @@ namespace baba
             return false;
         }
 
+        /// <summary>物品卡在窗口里时，向外一圈圈找最近的空路，朝那边跑。</summary>
+        private void Unstick(MonkeyEntity m)
+        {
+            for (int radius = 30; radius <= 300; radius += 30)
+            {
+                for (int angle = 0; angle < 360; angle += 20)
+                {
+                    float rad = angle * (float)Math.PI / 180f;
+                    float tx = m.X + (float)Math.Cos(rad) * radius;
+                    float ty = m.Y + (float)Math.Sin(rad) * radius;
+                    if (_screenBounds.Contains((int)tx, (int)ty) &&
+                        !IntersectsObstacle(GetCollisionBox(m, tx, ty)))
+                    {
+                        float speed = 220f * Math.Max(1f, m.SpeedFactor);
+                        m.SpeedX = (float)Math.Cos(rad) * speed;
+                        m.SpeedY = (float)Math.Sin(rad) * speed;
+                        return;
+                    }
+                }
+            }
+        }
+
         // ==================== 绘制 ====================
 
         protected override void OnPaint(PaintEventArgs e)
@@ -531,39 +557,34 @@ namespace baba
 
         private void DrawMonkey(Graphics g, MonkeyEntity m)
         {
-            // 爬行动画：上下颠簸 + 左右摇摆（纯正弦波叠加，无需骨骼，幅度可调）
-            float bobX = (float)Math.Sin(_elapsed * 6.0 + m.Phase) * (3f * _bobScale);
-            float bobY = (float)Math.Sin(_elapsed * 8.0 + m.Phase) * (5f * _bobScale);
+            // 温和的移动：只有一点点上下浮动，不搞夸张效果（幅度仍受“爬行幅度”设置控制）
+            float bobX = (float)Math.Sin(_elapsed * 2.0 + m.Phase) * (2f * _bobScale);
+            float bobY = (float)Math.Sin(_elapsed * 3.0 + m.Phase) * (3f * _bobScale);
             float drawX = m.X + bobX;
             float drawY = m.Y + bobY;
 
-            // 挤压拉伸：爬行时身体一鼓一鼓，像物品用四肢爬；再叠加上“物品大小”缩放
-            float squash = (float)Math.Sin(_elapsed * 8.0 + m.Phase) * 0.07f;
-            float scaleX = m.Scale * _sizeScale * m.ScaleBoost * (1f + squash);
-            float scaleY = m.Scale * _sizeScale * m.ScaleBoost * (1f - squash);
-
-            // 睡觉就趴下一点
-            if (m.IsSleeping) scaleY *= 0.85f;
+            float scaleX = m.Scale * _sizeScale * m.ScaleBoost;
+            float scaleY = m.Scale * _sizeScale * m.ScaleBoost;
+            if (m.IsSleeping) scaleY *= 0.85f; // 睡觉趴下一点
 
             int w = (int)(m.Width * scaleX);
             int h = (int)(m.Height * scaleY);
             if (w < 4 || h < 4) return;
 
-            // 朝向角 + 左右摇晃 + 偶尔打滚（ExtraAngle 转一圈）
-            float rock = (float)Math.Sin(_elapsed * 5.0 + m.Phase) * 6f;
-            float totalDeg = (m.Angle * 180f / (float)Math.PI) + rock + (m.ExtraAngle * 180f / (float)Math.PI);
-            if (m.IsSleeping) totalDeg = 0f; // 睡觉正面朝上
-
-            // 跳舞：原地蹦 + 左右扭
+            // 默认保持正立；往左走时水平翻个面（脸不朝下）。打滚/跳舞时才加额外旋转
+            float totalDeg = m.ExtraAngle * 180f / (float)Math.PI;
+            if (m.IsSleeping) totalDeg = 0f;
             if (m.IsDancing)
             {
-                drawY -= (float)Math.Abs(Math.Sin(_elapsed * 10.0 + m.Phase)) * 16f;
-                totalDeg += (float)Math.Sin(_elapsed * 12.0 + m.Phase) * 10f;
+                drawY -= (float)Math.Abs(Math.Sin(_elapsed * 10.0 + m.Phase)) * 14f;
+                totalDeg += (float)Math.Sin(_elapsed * 12.0 + m.Phase) * 8f;
             }
+            bool facingLeft = m.SpeedX < 0f && !m.IsSleeping;
 
             GraphicsState state = g.Save();
             g.TranslateTransform(drawX, drawY);
             g.RotateTransform(totalDeg);
+            if (facingLeft) g.ScaleTransform(-1f, 1f); // 水平镜像
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
             g.DrawImage(m.Sprite, -w / 2f, -h / 2f, w, h);
             g.Restore(state);

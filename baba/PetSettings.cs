@@ -12,7 +12,7 @@ namespace baba
         public int SpeedPercent { get; set; } = 100;      // 移动速度 %
         public int BobAmount { get; set; } = 100;         // 爬行颠簸幅度 %
         public int SizePercent { get; set; } = 100;       // 物品大小 %
-        public int TumbleRate { get; set; } = 100;        // 打滚频率 %（0 = 不打滚）
+        public int TumbleRate { get; set; } = 0;          // 打滚频率 %（0 = 不打滚，默认关）
         public int GroupDistance { get; set; } = 500;     // 群聚距离（像素）
         public bool TopMost { get; set; } = true;         // 始终置顶
         public bool SoundEnabled { get; set; } = true;    // 启用叫声
@@ -51,7 +51,7 @@ namespace baba
             SpeedPercent = 100;
             BobAmount = 100;
             SizePercent = 100;
-            TumbleRate = 100;
+            TumbleRate = 0;
             GroupDistance = 500;
             TopMost = true;
             SoundEnabled = true;

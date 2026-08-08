@@ -84,8 +84,7 @@ namespace baba
         private bool _missingImages;
         private bool _missingAudio;
 
-        // 喊“爸爸”时弹出的模拟消息框（说话气泡，非阻塞）
-        private static readonly string[] BubbleTexts = { "爸爸！", "叫爸爸！", "诶，爸爸！", "爸爸爸爸！" };
+        // 喊“爸爸”时弹出的模拟消息框（说话气泡，非阻塞；文字全部可自定义）
         private readonly List<SpeechBubble> _bubbles = new List<SpeechBubble>();
 
         // 趣味玩法状态
@@ -373,7 +372,7 @@ namespace baba
                     if (!m.IsSleeping && !m.IsDancing)
                     {
                         m.IsSleeping = true;
-                        AddBubble(GetMonkeyId(m), "💤 困了…");
+                        AddBubble(GetMonkeyId(m), _settings.SleepText);
                     }
                 }
             }
@@ -584,11 +583,9 @@ namespace baba
                 : 255;
             if (alpha <= 0) return;
 
-            string[] lines =
-            {
-                "右键喊爸爸 ｜ F3 一起喊 ｜ 左键戳一下 / 拖起来扔",
-                "F4 跳舞 ｜ F5 跟随 ｜ B 扔香蕉 ｜ F1 设置 ｜ ESC 退出",
-            };
+            string hint = _settings.HintText;
+            if (string.IsNullOrWhiteSpace(hint)) return;
+            string[] lines = hint.Replace("\r\n", "\n").Split('\n');
             using (var font = new Font("Microsoft YaHei UI", 13f, FontStyle.Bold))
             using (var shadow = new SolidBrush(Color.FromArgb(alpha / 2, 0, 0, 0)))
             using (var brush = new SolidBrush(Color.FromArgb(alpha, 255, 255, 255)))
@@ -798,7 +795,7 @@ namespace baba
                 m.SpeedX = Math.Clamp(vx, -1500f, 1500f);
                 m.SpeedY = Math.Clamp(vy, -1500f, 1500f);
                 m.ThrowTimer = 1.5f;
-                AddBubble(id, "咻——！");
+                AddBubble(id, _settings.TossText);
             }
         }
 
@@ -839,7 +836,7 @@ namespace baba
             if (m == null) return;
 
             m.TriggerRoar(0.3f, 0.5f); // 定格 0.3 秒，吼叫放大 0.5 秒
-            AddBubble(id, BubbleTexts[_rng.Next(BubbleTexts.Length)]);
+            AddBubble(id, RandomBubbleText());
             PlaySound();
         }
 
@@ -848,6 +845,15 @@ namespace baba
         private void AddBubble(int id, string text)
         {
             _bubbles.Add(new SpeechBubble { MonkeyId = id, StartTime = _elapsed, Text = text });
+        }
+
+        /// <summary>从自定义的“喊爸爸的话”里随机挑一句。</summary>
+        private string RandomBubbleText()
+        {
+            var valid = new List<string>();
+            foreach (var t in _settings.BubbleTexts)
+                if (!string.IsNullOrWhiteSpace(t)) valid.Add(t);
+            return valid.Count == 0 ? "爸爸！" : valid[_rng.Next(valid.Count)];
         }
 
         /// <summary>返回鼠标点中的猴子 id（1 起），没点中返回 -1。</summary>
@@ -870,7 +876,7 @@ namespace baba
             m.AirTime = 0.6f;      // 滞空 0.6 秒
             m.SpeedY = -500f;      // 往上一蹦
             m.SpeedX *= 0.2f;      // 别滑太远
-            AddBubble(id, "咦！");
+            AddBubble(id, _settings.PokeText);
         }
 
         private void ResetIdle()
@@ -908,7 +914,7 @@ namespace baba
                 m.IsSleeping = false;
                 m.IsDancing = true;
             }
-            if (_monkeys.Count > 0) AddBubble(1, "🎵 蹦迪时间！");
+            if (_monkeys.Count > 0) AddBubble(1, _settings.DanceText);
         }
 
         /// <summary>F5 / API：切换“跟着鼠标走”。</summary>
@@ -983,7 +989,7 @@ namespace baba
                         _bananas.RemoveAt(i);
                         _bananaScore++;
                         m.ScaleBoost = 1.6f;
-                        AddBubble(j + 1, "🍌 我抢到啦！");
+                        AddBubble(j + 1, _settings.BananaText);
                         PlaySound();
                         eaten = true;
                     }
@@ -1301,6 +1307,22 @@ namespace baba
                 ApplyBool(root, "ObstaclesEnabled", v => _settings.ObstaclesEnabled = v);
                 ApplyBool(root, "ApiEnabled", v => _settings.ApiEnabled = v);
 
+                // 自定义文字（可局部更新）
+                ApplyString(root, "PokeText", v => _settings.PokeText = v);
+                ApplyString(root, "TossText", v => _settings.TossText = v);
+                ApplyString(root, "DanceText", v => _settings.DanceText = v);
+                ApplyString(root, "BananaText", v => _settings.BananaText = v);
+                ApplyString(root, "SleepText", v => _settings.SleepText = v);
+                ApplyString(root, "HintText", v => _settings.HintText = v);
+                if (root.TryGetProperty("BubbleTexts", out var bt) && bt.ValueKind == JsonValueKind.Array)
+                {
+                    var list = new List<string>();
+                    foreach (var el in bt.EnumerateArray())
+                        if (el.ValueKind == JsonValueKind.String)
+                            list.Add(el.GetString() ?? "");
+                    _settings.BubbleTexts = list;
+                }
+
                 SetMonkeyCount(_settings.MonkeyCount);
                 ApplySettings();
 
@@ -1340,6 +1362,12 @@ namespace baba
         {
             if (root.TryGetProperty(name, out var el) && (el.ValueKind == JsonValueKind.True || el.ValueKind == JsonValueKind.False))
                 set(el.GetBoolean());
+        }
+
+        private static void ApplyString(JsonElement root, string name, Action<string> set)
+        {
+            if (root.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.String)
+                set(el.GetString() ?? "");
         }
 
         public void ApiExit()

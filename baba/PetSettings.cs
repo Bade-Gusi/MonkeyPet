@@ -25,6 +25,16 @@ namespace baba
         public bool AutoStart { get; set; }               // 开机自启动
         public List<string?> ImagePaths { get; set; } = new List<string?>(); // 每只猴子的自选图片（跟着数量走）
 
+        // ===== 自定义文字（全部可在设置里改） =====
+        public List<string> BubbleTexts { get; set; } = new List<string> { "爸爸！", "叫爸爸！", "诶，爸爸！", "爸爸爸爸！" };
+        public string PokeText { get; set; } = "咦！";
+        public string TossText { get; set; } = "咻——！";
+        public string DanceText { get; set; } = "🎵 蹦迪时间！";
+        public string BananaText { get; set; } = "🍌 我抢到啦！";
+        public string SleepText { get; set; } = "💤 困了…";
+        public string HintText { get; set; } =
+            "右键喊爸爸 ｜ F3 一起喊 ｜ 左键戳一下 / 拖起来扔\nF4 跳舞 ｜ F5 跟随 ｜ B 扔香蕉 ｜ F1 设置 ｜ ESC 退出";
+
         public string? GetImagePath(int index) =>
             index >= 0 && index < ImagePaths.Count ? ImagePaths[index] : null;
 
@@ -51,6 +61,13 @@ namespace baba
             ApiPort = 17580;
             AutoStart = false;
             ImagePaths.Clear();
+            BubbleTexts = new List<string> { "爸爸！", "叫爸爸！", "诶，爸爸！", "爸爸爸爸！" };
+            PokeText = "咦！";
+            TossText = "咻——！";
+            DanceText = "🎵 蹦迪时间！";
+            BananaText = "🍌 我抢到啦！";
+            SleepText = "💤 困了…";
+            HintText = "右键喊爸爸 ｜ F3 一起喊 ｜ 左键戳一下 / 拖起来扔\nF4 跳舞 ｜ F5 跟随 ｜ B 扔香蕉 ｜ F1 设置 ｜ ESC 退出";
         }
     }
 

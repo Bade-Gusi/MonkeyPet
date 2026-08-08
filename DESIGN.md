@@ -59,6 +59,9 @@
   OnResize + WM_DISPLAYCHANGE 重新铺满并把猴子夹回屏内；缓冲区按虚拟屏尺寸重建
 - 开机自启动: 优先注册表 HKCU Run 键，被锁则回退到启动文件夹 .lnk 快捷方式；
   设置「行为」勾选即生效，启动时按设置同步注册表
+- 自定义文字: 设置「自定义文字」页签可编辑——BubbleTexts(每行一条随机挑)、
+  PokeText/TossText/DanceText/BananaText/SleepText/HintText(可换行)；
+  API 支持局部更新这些字段
 - 控制 API: 内置极简 HTTP 服务（`TcpListener` 只绑 `127.0.0.1`，默认端口 17580），
   每只猴子按 ID 可控（`/api/monkeys/{id}/roar|move|speed|image`），设置支持局部更新，
   `/api/exit` 退出；设置「关于」页可开关/看地址

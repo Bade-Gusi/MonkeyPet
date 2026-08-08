@@ -25,7 +25,17 @@ namespace baba
         private readonly TabControl _tabs = new TabControl();
         private readonly TabPage _tabMain = new TabPage("基本设置");
         private readonly TabPage _tabImages = new TabPage("猴子图片");
+        private readonly TabPage _tabText = new TabPage("自定义文字");
         private readonly TabPage _tabAbout = new TabPage("关于");
+
+        // 自定义文字
+        private readonly TextBox _roarTextsBox = new TextBox { Multiline = true };
+        private readonly TextBox _pokeBox = new TextBox();
+        private readonly TextBox _tossBox = new TextBox();
+        private readonly TextBox _danceBox = new TextBox();
+        private readonly TextBox _bananaBox = new TextBox();
+        private readonly TextBox _sleepBox = new TextBox();
+        private readonly TextBox _hintBox = new TextBox { Multiline = true };
 
         // 基本：猴子数量
         private readonly GroupBox _gMonkey = new GroupBox { Text = "猴子" };
@@ -95,6 +105,7 @@ namespace baba
             _tabs.Dock = DockStyle.Fill;
             _tabs.TabPages.Add(_tabMain);
             _tabs.TabPages.Add(_tabImages);
+            _tabs.TabPages.Add(_tabText);
             _tabs.TabPages.Add(_tabAbout);
 
             // ---------- 基本设置 ----------
@@ -138,6 +149,19 @@ namespace baba
             _cutoutBtn.Size = new Size(124, 32);
             _openAssetsBtn.Text = "📂 打开素材文件夹（把 p1~p4.png 和 dad.wav 丢进去就行）";
             _openAssetsBtn.Size = new Size(428, 36);
+
+            // ---------- 自定义文字 ----------
+            _tabText.AutoScroll = true;
+            var gText = new GroupBox { Text = "所有文字都能改，改完立刻生效", Location = new Point(12, 12), Size = new Size(430, 520) };
+            int ty = 26;
+            AddTextField(gText, "喊爸爸时弹的话（一行一句，随机挑一句）：", _roarTextsBox, 72, ref ty);
+            AddTextField(gText, "被戳一下时：", _pokeBox, 26, ref ty);
+            AddTextField(gText, "被扔出去时：", _tossBox, 26, ref ty);
+            AddTextField(gText, "跳舞时：", _danceBox, 26, ref ty);
+            AddTextField(gText, "抢到香蕉时：", _bananaBox, 26, ref ty);
+            AddTextField(gText, "睡觉时：", _sleepBox, 26, ref ty);
+            AddTextField(gText, "左上角操作提示（可换行）：", _hintBox, 64, ref ty);
+            _tabText.Controls.Add(gText);
 
             // ---------- 关于 ----------
             _tabAbout.AutoScroll = true;
@@ -243,6 +267,17 @@ namespace baba
             parent.Controls.Add(valueLabel);
         }
 
+        private void AddTextField(Control parent, string label, TextBox box, int height, ref int y)
+        {
+            parent.Controls.Add(new Label { Text = label, Location = new Point(16, y), AutoSize = true });
+            y += 22;
+            box.Location = new Point(16, y);
+            box.Size = new Size(398, height);
+            if (box.Multiline) box.ScrollBars = ScrollBars.Vertical;
+            parent.Controls.Add(box);
+            y += height + 14;
+        }
+
         // ==================== 猴子图片动态槽位 ====================
 
         private void RelayoutImages()
@@ -328,6 +363,13 @@ namespace baba
             _obstacleCheck.Checked = _settings.ObstaclesEnabled;
             _autoStartCheck.Checked = _settings.AutoStart;
             _apiCheck.Checked = _settings.ApiEnabled;
+            _roarTextsBox.Lines = _settings.BubbleTexts.Where(t => !string.IsNullOrWhiteSpace(t)).ToArray();
+            _pokeBox.Text = _settings.PokeText;
+            _tossBox.Text = _settings.TossText;
+            _danceBox.Text = _settings.DanceText;
+            _bananaBox.Text = _settings.BananaText;
+            _sleepBox.Text = _settings.SleepText;
+            _hintBox.Text = _settings.HintText;
             UpdateApiLabel();
             UpdateValueLabels();
         }
@@ -346,6 +388,13 @@ namespace baba
             _groupCheck.CheckedChanged += (s, e) => SaveAndApply();
             _obstacleCheck.CheckedChanged += (s, e) => SaveAndApply();
             _autoStartCheck.CheckedChanged += (s, e) => _pet.SetAutoStart(_autoStartCheck.Checked);
+            _roarTextsBox.TextChanged += (s, e) => SaveAndApply();
+            _pokeBox.TextChanged += (s, e) => SaveAndApply();
+            _tossBox.TextChanged += (s, e) => SaveAndApply();
+            _danceBox.TextChanged += (s, e) => SaveAndApply();
+            _bananaBox.TextChanged += (s, e) => SaveAndApply();
+            _sleepBox.TextChanged += (s, e) => SaveAndApply();
+            _hintBox.TextChanged += (s, e) => SaveAndApply();
             _cutoutBtn.Click += (s, e) => OpenCutout();
             _openAssetsBtn.Click += (s, e) => OpenAssetsFolder();
             _license.LinkClicked += (s, e) =>
@@ -387,6 +436,13 @@ namespace baba
             _settings.ShowHint = _hintCheck.Checked;
             _settings.GroupingEnabled = _groupCheck.Checked;
             _settings.ObstaclesEnabled = _obstacleCheck.Checked;
+            _settings.BubbleTexts = _roarTextsBox.Lines.Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
+            _settings.PokeText = _pokeBox.Text;
+            _settings.TossText = _tossBox.Text;
+            _settings.DanceText = _danceBox.Text;
+            _settings.BananaText = _bananaBox.Text;
+            _settings.SleepText = _sleepBox.Text;
+            _settings.HintText = _hintBox.Text;
 
             UpdateValueLabels();
             _pet.SetMonkeyCount(_countBar.Value);
